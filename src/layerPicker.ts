@@ -12,14 +12,16 @@ const NEW_ITEM_DESCRIPTION = 'add as a new layer';
  * A checklist of folder names. Typing a name that is not listed offers to add it.
  * Resolves with the checked names, or undefined when dismissed.
  */
-export function pickLayers(rows: LayerRow[], title: string, placeholder: string): Promise<string[] | undefined> {
+export function pickLayers(rows: LayerRow[], title: string, prompt: string): Promise<string[] | undefined> {
   return new Promise((resolve) => {
     const known = new Map(rows.map((r) => [r.name, r.description]));
     const checked = new Set(rows.filter((r) => r.checked).map((r) => r.name));
 
     const qp = vscode.window.createQuickPick<vscode.QuickPickItem>();
     qp.title = title;
-    qp.placeholder = placeholder;
+    // The placeholder is cut off by the "N selected" badge, so it stays short and the explanation goes in the prompt.
+    qp.placeholder = 'Type a folder name to add a layer';
+    qp.prompt = prompt;
     qp.canSelectMany = true;
     qp.ignoreFocusOut = true; // an accidental click elsewhere must not discard the choices
 

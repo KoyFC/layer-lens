@@ -49,7 +49,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const picked = await pickLayers(
       rows,
       first ? 'Layer Lens: layers found in this workspace' : 'Layer Lens: layers found by the scan',
-      'Uncheck what is not a layer. Type a name to add one that was not detected.',
+      'Uncheck what is not a layer. Missing one? Type its folder name above.',
     );
     // Dismissing the first prompt keeps what was found, so it does not come back on every start.
     if (picked) state.setLayers(picked);
@@ -68,7 +68,7 @@ export function activate(context: vscode.ExtensionContext): void {
         return { name, description: n ? `repeated in ${n} folders` : undefined, checked: current.includes(name) };
       }),
       'Layer Lens: folder names treated as layers',
-      'Check the layers. Type a name to add one that is not listed.',
+      'Check the layers. Missing one? Type its folder name above.',
     );
     if (!picked) return;
     state.setLayers(picked);
