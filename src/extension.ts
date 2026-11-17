@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { detectLayers } from './detect';
+import { pickLayers } from './layerPicker';
 import { FilterState, autoDetectEnabled, excludedNames, seedLayers, unique } from './state';
 import { LayerLensView } from './view';
 
@@ -18,55 +19,59 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // ---- layers ------------------------------------------------------------
 
-  /** Adds every repeated folder name found in the workspace; never removes a layer. */
-  const rescan = async (announce: boolean): Promise<void> => {
+  /**
+   * Looks for repeated folder names and lets the user confirm them, uncheck false positives
+   * and type in any that were missed. Never removes a layer that is already in the list.
+   */
+  const rescan = async (first: boolean): Promise<void> => {
     const found = await detectLayers(excludedNames());
     state.candidates = found;
-    const before = state.layers();
-    state.setLayers([...before, ...seedLayers(), ...found.keys()]);
-    const added = state.layers().filter((l) => !before.includes(l));
-    view.rerender();
-    if (!announce) return;
-    void vscode.window.showInformationMessage(
-      added.length
-        ? `Layer Lens: added ${added.join(', ')}.`
-        : 'Layer Lens: no new layers found. Use "Edit layers" to remove or re-add names.',
+    const current = state.layers();
+    const names = unique([...current, ...seedLayers(), ...found.keys()]);
+    const fresh = names.filter((n) => !current.includes(n));
+
+    // The first time, anything detected is worth confirming; later, only names not yet in the list.
+    if (first ? found.size === 0 : fresh.length === 0) {
+      if (first) state.setLayers(names);
+      else void vscode.window.showInformationMessage('Layer Lens: no new layers found. Use "Edit layers" to change the list.');
+      view.rerender();
+      return;
+    }
+
+    const rows = names.map((name) => {
+      const n = found.get(name);
+      return {
+        name,
+        description: n ? `repeated in ${n} folders` : !first && current.includes(name) ? 'already a layer' : 'from settings',
+        checked: true,
+      };
+    });
+    const picked = await pickLayers(
+      rows,
+      first ? 'Layer Lens: layers found in this workspace' : 'Layer Lens: layers found by the scan',
+      'Uncheck what is not a layer. Type a name to add one that was not detected.',
     );
+    // Dismissing the first prompt keeps what was found, so it does not come back on every start.
+    if (picked) state.setLayers(picked);
+    else if (first) state.setLayers(names);
+    view.rerender();
   };
 
-  reg('layerLens.rescan', () => rescan(true));
+  reg('layerLens.rescan', () => rescan(false));
 
   reg('layerLens.editLayers', async () => {
     const current = state.layers();
     const names = unique([...current, ...state.candidates.keys()]);
-    const items = names.map((name) => {
-      const n = state.candidates.get(name);
-      return { label: name, description: n ? `repeated in ${n} folders` : undefined, picked: current.includes(name) };
-    });
-    const picked = await vscode.window.showQuickPick(items, {
-      canPickMany: true,
-      title: 'Layer Lens: folder names treated as layers',
-      placeHolder: 'Use "Add layer" for a name that is not listed',
-    });
+    const picked = await pickLayers(
+      names.map((name) => {
+        const n = state.candidates.get(name);
+        return { name, description: n ? `repeated in ${n} folders` : undefined, checked: current.includes(name) };
+      }),
+      'Layer Lens: folder names treated as layers',
+      'Check the layers. Type a name to add one that is not listed.',
+    );
     if (!picked) return;
-    state.setLayers(picked.map((p) => p.label));
-    view.rerender();
-  });
-
-  reg('layerLens.addLayer', async () => {
-    const name = await vscode.window.showInputBox({
-      title: 'Layer Lens: add a layer',
-      prompt: 'Folder name to treat as a layer (case-insensitive)',
-      validateInput: (v) => {
-        const t = v.trim();
-        if (!t) return 'Enter a folder name';
-        if (/[\\/]/.test(t)) return 'Use a single folder name, without slashes';
-        if (state.layers().includes(t.toLowerCase())) return 'That layer already exists';
-        return undefined;
-      },
-    });
-    if (!name) return;
-    state.setLayers([...state.layers(), name]);
+    state.setLayers(picked);
     view.rerender();
   });
 
@@ -94,8 +99,8 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   reg('layerLens.refresh', () => view.refresh());
 
-  // First time in this workspace: look for repeated folders once.
-  if (!state.hasSavedLayers() && autoDetectEnabled()) void rescan(false);
+  // First time in this workspace: look for repeated folders once and ask the user to confirm them.
+  if (!state.hasSavedLayers() && autoDetectEnabled()) void rescan(true);
 
   // ---- new files and folders --------------------------------------------
 

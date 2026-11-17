@@ -59,10 +59,6 @@
         "icon": "$(new-folder)"
       },
       {
-        "command": "layerLens.addLayer",
-        "title": "Layer Lens: add layer…"
-      },
-      {
         "command": "layerLens.editLayers",
         "title": "Layer Lens: edit layers…"
       },
@@ -117,11 +113,6 @@
           "command": "layerLens.rescan",
           "when": "view == layerLens.tree",
           "group": "2_layers@3"
-        },
-        {
-          "command": "layerLens.addLayer",
-          "when": "view == layerLens.tree",
-          "group": "2_layers@1"
         }
       ]
     },
@@ -165,7 +156,7 @@
         "layerLens.autoDetect": {
           "type": "boolean",
           "default": true,
-          "description": "The first time a workspace is opened, scan it for folder names repeated across sibling folders (e.g. contexts/*/application) and treat them as layers. \"Layer Lens: rescan layers\" can be run at any time."
+          "description": "The first time a workspace is opened, scan it for folder names repeated across sibling folders (e.g. contexts/*/application) and ask which ones to treat as layers. \"Layer Lens: rescan layers\" can be run at any time."
         }
       }
     }
