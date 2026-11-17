@@ -34,19 +34,17 @@ export function activate(context: vscode.ExtensionContext): void {
     undo: () => Promise<string | undefined>;
   }
   const undoStack: UndoStep[] = [];
+  /**
+   * Rename, move and delete cannot be undone here: extensions may have rewritten references in other
+   * files when they ran, and moving back would not revert those. They also leave older steps pointing
+   * at paths that changed, so they close the history instead of letting Ctrl+Z reach past them.
+   */
+  const closeUndoHistory = (): void => {
+    undoStack.length = 0;
+  };
   const pushUndo = (step: UndoStep): void => {
     undoStack.push(step);
     if (undoStack.length > 50) undoStack.shift();
-  };
-
-  /** Moves `from` back to `to`, through a workspace edit so imports follow again. */
-  const moveBack = async (from: vscode.Uri, to: vscode.Uri): Promise<string | undefined> => {
-    if (!(await exists(from))) return `${baseName(from)} is no longer there`;
-    if (await exists(to)) return `${baseName(to)} already exists`;
-    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(to, '..'));
-    const edit = new vscode.WorkspaceEdit();
-    edit.renameFile(from, to);
-    return (await vscode.workspace.applyEdit(edit)) ? undefined : 'Could not move it back';
   };
 
   /** Removes something the tree made. It goes to the Trash when enabled, since it may have been edited since. */
@@ -345,7 +343,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const edit = new vscode.WorkspaceEdit();
     edit.renameFile(uri, target);
     if (!(await vscode.workspace.applyEdit(edit))) return 'Could not rename it';
-    pushUndo({ label: `rename ${baseName(uri)}`, undo: () => moveBack(target, uri) });
+    closeUndoHistory();
     view.refresh();
     return undefined;
   };
@@ -526,8 +524,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const edit = new vscode.WorkspaceEdit();
     edit.renameFile(source, destination, { overwrite });
     if (await vscode.workspace.applyEdit(edit)) {
-      // A replaced item cannot be brought back, so only a plain move can be undone.
-      if (!overwrite) pushUndo({ label: `move ${name}`, undo: () => moveBack(destination, source) });
+      closeUndoHistory();
       view.refresh();
     } else {
       void vscode.window.showErrorMessage(`Layer Lens: could not move '${name}'.`);
