@@ -33,6 +33,8 @@ export class FilterState {
   private colors: Record<string, string>;
   showOthers: boolean;
   flatten: boolean;
+  /** Layer names that have a folder in this workspace right now; undefined until the view has looked. */
+  present: Set<string> | undefined;
   /** Names found by the last scan with how many places repeat them (not persisted). */
   candidates = new Map<string, number>();
 
@@ -51,6 +53,11 @@ export class FilterState {
   /** The folder names treated as layers in this workspace: the saved list, or the settings before one exists. */
   layers(): string[] {
     return this.list ?? seedLayers();
+  }
+
+  /** The layers that exist in this workspace: the ones worth showing a chip for. */
+  shownLayers(): string[] {
+    return this.layers().filter((l) => !this.present || this.present.has(l));
   }
 
   hasSavedLayers(): boolean {
@@ -85,8 +92,9 @@ export class FilterState {
     return this.active.has(layer.toLowerCase());
   }
 
+  /** Visible layers among those that exist here. */
   activeLayers(): string[] {
-    return this.layers().filter((l) => this.isActive(l));
+    return this.shownLayers().filter((l) => this.isActive(l));
   }
 
   set(layer: string, on: boolean): void {
@@ -104,17 +112,29 @@ export class FilterState {
   solo(layer: string): void {
     const only = this.activeLayers();
     const already = only.length === 1 && only[0] === layer.toLowerCase();
-    this.setAll(already ? this.layers() : [layer]);
+    this.setShown(already ? this.shownLayers() : [layer]);
   }
 
   /** Shows the hidden layers and hides the visible ones. */
   invert(): void {
-    this.setAll(this.layers().filter((l) => !this.isActive(l)));
+    this.setShown(this.shownLayers().filter((l) => !this.isActive(l)));
   }
 
   /** Hides every layer when all are visible, otherwise shows them all. */
   toggleAll(): void {
-    this.setAll(this.activeLayers().length === this.layers().length ? [] : this.layers());
+    const shown = this.shownLayers();
+    this.setShown(this.activeLayers().length === shown.length ? [] : shown);
+  }
+
+  /**
+   * Makes exactly these layers visible among those that exist here. Layers with no folder yet
+   * keep their state, so they are not hidden when they show up later.
+   */
+  setShown(visible: string[]): void {
+    const shown = new Set(this.shownLayers());
+    const kept = [...this.active].filter((l) => !shown.has(l));
+    this.active = new Set([...kept, ...visible.map((l) => l.toLowerCase())]);
+    this.persist();
   }
 
   toggleOthers(): void {

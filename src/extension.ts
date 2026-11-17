@@ -34,13 +34,19 @@ export function activate(context: vscode.ExtensionContext): void {
   const rescan = async (first: boolean): Promise<void> => {
     const found = await detectLayers(excludedNames());
     state.candidates = found;
-    const current = state.layers();
-    const names = unique([...current, ...seedLayers(), ...found.keys()]);
+
+    // Layers from the settings are offered only when the project actually has such a folder.
+    const seeds = seedLayers();
+    const seedsHere = await view.presentAmong(seeds);
+    const current = state.hasSavedLayers() ? state.layers() : [];
+    const names = unique([...current, ...seedsHere, ...found.keys()]);
     const fresh = names.filter((n) => !current.includes(n));
+    // Settings layers missing from this project stay in the list, so they show up if the folder appears.
+    const absentSeeds = seeds.filter((s) => !names.includes(s));
 
     // The first time, anything detected is worth confirming; later, only names not yet in the list.
-    if (first ? found.size === 0 : fresh.length === 0) {
-      if (first) state.setLayers(names);
+    if (first ? names.length === 0 : fresh.length === 0) {
+      if (first) state.setLayers([...seeds]);
       else void vscode.window.showInformationMessage('Layer Lens: no new layers found. Use "Edit layers" to change the list.');
       view.rerender();
       return;
@@ -50,7 +56,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const n = found.get(name);
       return {
         name,
-        description: n ? `repeated in ${n} folders` : !first && current.includes(name) ? 'already a layer' : 'from settings',
+        description: n ? `repeated in ${n} folders` : current.includes(name) ? 'already a layer' : 'from settings',
         checked: true,
       };
     });
@@ -60,8 +66,8 @@ export function activate(context: vscode.ExtensionContext): void {
       'Uncheck what is not a layer. Missing one? Type its folder name above.',
     );
     // Dismissing the first prompt keeps what was found, so it does not come back on every start.
-    if (picked) state.setLayers(picked);
-    else if (first) state.setLayers(names);
+    const chosen = picked ?? (first ? names : undefined);
+    if (chosen) state.setLayers([...chosen, ...absentSeeds]);
     view.rerender();
   };
 
@@ -73,7 +79,12 @@ export function activate(context: vscode.ExtensionContext): void {
     const picked = await pickLayers(
       names.map((name) => {
         const n = state.candidates.get(name);
-        return { name, description: n ? `repeated in ${n} folders` : undefined, checked: current.includes(name) };
+        const missing = state.present && !state.present.has(name);
+        return {
+          name,
+          description: n ? `repeated in ${n} folders` : missing ? 'no such folder in this workspace' : undefined,
+          checked: current.includes(name),
+        };
       }),
       'Layer Lens: folder names treated as layers',
       'Check the layers. Missing one? Type its folder name above.',
@@ -104,13 +115,13 @@ export function activate(context: vscode.ExtensionContext): void {
   });
 
   reg('layerLens.pickLayers', async () => {
-    const items = state.layers().map((l) => ({ label: l, picked: state.isActive(l) }));
+    const items = state.shownLayers().map((l) => ({ label: l, picked: state.isActive(l) }));
     const picked = await vscode.window.showQuickPick(items, {
       canPickMany: true,
       title: 'Layer Lens: visible layers',
     });
     if (!picked) return;
-    state.setAll(picked.map((p) => p.label));
+    state.setShown(picked.map((p) => p.label));
     view.rerender();
   });
   reg('layerLens.soloLayer', (arg?: unknown) => {
@@ -120,7 +131,7 @@ export function activate(context: vscode.ExtensionContext): void {
     view.rerender();
   });
   reg('layerLens.hideAll', () => {
-    state.setAll([]);
+    state.setShown([]);
     view.rerender();
   });
   reg('layerLens.invertLayers', () => {
@@ -128,7 +139,7 @@ export function activate(context: vscode.ExtensionContext): void {
     view.rerender();
   });
   reg('layerLens.showAll', () => {
-    state.setAll(state.layers());
+    state.setShown(state.shownLayers());
     view.rerender();
   });
   reg('layerLens.toggleOthers', () => {

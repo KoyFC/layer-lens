@@ -505,7 +505,9 @@
     if (model.rootUri) groups.set(model.rootUri, { group: tree, node: null, depth: 0 });
     if (model.tree.length === 0) {
       message.hidden = false;
-      message.textContent = 'No folders match the active layers. Enable a layer above.';
+      message.textContent = model.layers.length
+        ? 'No folders match the active layers. Enable a layer above.'
+        : 'No layer folders found in this workspace. Use Edit layers or Rescan.';
     } else {
       message.hidden = !model.truncated;
       message.textContent = model.truncated ? 'Tree truncated: too many entries to display.' : '';

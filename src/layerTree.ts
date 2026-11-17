@@ -35,6 +35,30 @@ export class LayerModel {
 
   constructor(private readonly state: FilterState) {}
 
+  /** The given layer names that exist as a folder anywhere in the workspace (excluded folders aside). */
+  async presentLayers(names: string[]): Promise<Set<string>> {
+    const wanted = new Set(names.map((n) => n.toLowerCase()));
+    const found = new Set<string>();
+    const exclude = excludedNames();
+    let budget = MAX_NODES;
+
+    const visit = async (dir: vscode.Uri, depth: number): Promise<void> => {
+      if (found.size === wanted.size || depth > MAX_DEPTH || budget-- <= 0) return;
+      for (const e of await this.read(dir)) {
+        if (!e.isDir || exclude.has(e.name)) continue;
+        const lower = e.name.toLowerCase();
+        if (wanted.has(lower)) found.add(lower);
+      }
+      for (const e of await this.read(dir)) {
+        if (found.size === wanted.size) return;
+        if (e.isDir && !exclude.has(e.name)) await visit(vscode.Uri.joinPath(dir, e.name), depth + 1);
+      }
+    };
+
+    for (const f of vscode.workspace.workspaceFolders ?? []) await visit(f.uri, 0);
+    return found;
+  }
+
   invalidate(): void {
     this.dirCache.clear();
     this.containsCache.clear();

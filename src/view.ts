@@ -99,6 +99,11 @@ export class LayerLensView implements vscode.WebviewViewProvider {
     this.view.webview.options = { enableScripts: true, localResourceRoots: roots };
   }
 
+  /** Which of these names exist as a folder in the workspace. */
+  async presentAmong(names: string[]): Promise<string[]> {
+    return [...(await this.model.presentLayers(names))];
+  }
+
   /** Re-posts using cached directory reads (filter changes only). */
   rerender(): void {
     void this.post();
@@ -106,9 +111,12 @@ export class LayerLensView implements vscode.WebviewViewProvider {
 
   private async post(): Promise<void> {
     if (!this.view) return;
-    const layers = this.state.layers().map((name, i) => ({
+    // Look for the layer folders first: only the ones that exist get a chip, and the filters count only those.
+    this.state.present = await this.model.presentLayers(this.state.layers());
+    const all = this.state.layers();
+    const layers = this.state.shownLayers().map((name) => ({
       name,
-      color: this.state.customColor(name) ?? defaultColor(name, i),
+      color: this.state.customColor(name) ?? defaultColor(name, all.indexOf(name)),
       active: this.state.isActive(name),
     }));
     if (!this.themeLoaded) {
