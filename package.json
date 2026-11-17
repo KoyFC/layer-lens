@@ -28,47 +28,67 @@
     "commands": [
       {
         "command": "layerLens.pickLayers",
-        "title": "Layer Lens: pick layers…",
-        "icon": "$(filter)"
+        "title": "Pick layers…",
+        "icon": "$(filter)",
+        "category": "Layer Lens"
       },
       {
         "command": "layerLens.showAll",
-        "title": "Layer Lens: show all layers"
+        "title": "Show all layers",
+        "category": "Layer Lens"
       },
       {
         "command": "layerLens.toggleOthers",
-        "title": "Layer Lens: toggle other folders and files"
+        "title": "Toggle other folders and files",
+        "category": "Layer Lens"
       },
       {
         "command": "layerLens.toggleFlatten",
-        "title": "Layer Lens: flatten layer folder (only with a single active layer)"
+        "title": "Flatten layer folder (only with a single active layer)",
+        "category": "Layer Lens"
       },
       {
         "command": "layerLens.refresh",
-        "title": "Layer Lens: refresh",
-        "icon": "$(refresh)"
+        "title": "Refresh",
+        "icon": "$(refresh)",
+        "category": "Layer Lens"
       },
       {
         "command": "layerLens.newFile",
-        "title": "Layer Lens: new file",
-        "icon": "$(new-file)"
+        "title": "New file",
+        "icon": "$(new-file)",
+        "category": "Layer Lens"
       },
       {
         "command": "layerLens.newFolder",
-        "title": "Layer Lens: new folder",
-        "icon": "$(new-folder)"
+        "title": "New folder",
+        "icon": "$(new-folder)",
+        "category": "Layer Lens"
       },
       {
         "command": "layerLens.editLayers",
-        "title": "Layer Lens: edit layers…"
+        "title": "Edit layers…",
+        "category": "Layer Lens"
       },
       {
         "command": "layerLens.editColor",
-        "title": "Layer Lens: change layer color…"
+        "title": "Change layer color…",
+        "category": "Layer Lens"
       },
       {
         "command": "layerLens.rescan",
-        "title": "Layer Lens: rescan layers"
+        "title": "Rescan layers",
+        "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.reveal",
+        "title": "Reveal in Explorer",
+        "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.copyRelativePath",
+        "title": "Copy relative path",
+        "category": "Layer Lens"
       }
     ],
     "menus": {
@@ -122,6 +142,43 @@
           "command": "layerLens.editColor",
           "when": "view == layerLens.tree",
           "group": "2_layers@3"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "layerLens.newFile",
+          "when": "webview == layerLens.tree && webviewSection =~ /^(dir|file|root)$/",
+          "group": "1_create@1"
+        },
+        {
+          "command": "layerLens.newFolder",
+          "when": "webview == layerLens.tree && webviewSection =~ /^(dir|file|root)$/",
+          "group": "1_create@2"
+        },
+        {
+          "command": "layerLens.reveal",
+          "when": "webview == layerLens.tree && webviewSection =~ /^(dir|file)$/",
+          "group": "2_files@1"
+        },
+        {
+          "command": "layerLens.copyRelativePath",
+          "when": "webview == layerLens.tree && webviewSection =~ /^(dir|file)$/",
+          "group": "2_files@2"
+        },
+        {
+          "command": "layerLens.editColor",
+          "when": "webview == layerLens.tree && webviewSection == layer",
+          "group": "1_layer@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "layerLens.reveal",
+          "when": "false"
+        },
+        {
+          "command": "layerLens.copyRelativePath",
+          "when": "false"
         }
       ]
     },

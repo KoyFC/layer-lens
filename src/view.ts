@@ -15,6 +15,8 @@ const COMMANDS = new Set([
   'layerLens.newFolder',
   'layerLens.editLayers',
   'layerLens.editColor',
+  'layerLens.reveal',
+  'layerLens.copyRelativePath',
   'layerLens.rescan',
 ]);
 
@@ -118,14 +120,11 @@ export class LayerLensView implements vscode.WebviewViewProvider {
         // Only the view's own commands can be triggered from the page.
         if (COMMANDS.has(String(msg.id))) await vscode.commands.executeCommand(String(msg.id), msg.layer ?? msg.uri);
         return;
-      case 'open':
-      case 'reveal':
-      case 'copy': {
+      case 'open': {
         const uri = vscode.Uri.parse(String(msg.uri));
         if (!vscode.workspace.getWorkspaceFolder(uri)) return; // ignore anything outside the workspace
-        if (msg.type === 'open') await vscode.commands.executeCommand('vscode.open', uri);
-        else if (msg.type === 'reveal') await vscode.commands.executeCommand('revealInExplorer', uri);
-        else await vscode.env.clipboard.writeText(vscode.workspace.asRelativePath(uri, false));
+        await vscode.commands.executeCommand('vscode.open', uri);
+        return;
       }
     }
   }

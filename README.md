@@ -16,7 +16,7 @@ With only `application` enabled you see every controller/service across all cont
 - The **Other folders** and **Flatten layer** chips toggle the remaining folders/files and the layer-node removal (single active layer only).
 - **Layers are detected automatically** the first time a workspace is opened: any folder name repeated inside two or more sibling folders (`contexts/users/application`, `contexts/orders/application`, …) is offered in a checklist. Uncheck false positives, or type a name to add one that was missed. The names in `layerLens.layers` are always offered.
 - **Edit layers** and **Rescan** (chips under the filters, also in the `…` menu) reopen that checklist later. Rescan only offers newly found names; Edit layers can also remove any layer.
-- **Colors:** right-click a chip, or use the **Colors** chip, to pick a layer's color from the default, a preset or any hex code. Colors are saved per workspace.
+- **Colors:** right-click a chip and choose *Change color…*, or use the **Colors** chip, to pick a layer's color from the default, a preset or any hex code. Colors are saved per workspace.
 - State is stored per workspace.
 
 ## Settings

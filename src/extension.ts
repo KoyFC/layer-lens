@@ -5,6 +5,13 @@ import { pickLayers } from './layerPicker';
 import { FilterState, autoDetectEnabled, excludedNames, seedLayers, unique } from './state';
 import { LayerLensView, defaultColor } from './view';
 
+/** Commands get a plain string from the page's buttons, or the `data-vscode-context` object from a right-click menu. */
+function argOf(arg: unknown, key: 'uri' | 'layer'): string | undefined {
+  if (typeof arg === 'string') return arg;
+  const value = arg && typeof arg === 'object' ? (arg as Record<string, unknown>)[key] : undefined;
+  return typeof value === 'string' ? value : undefined;
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   const state = new FilterState(context.workspaceState);
   const view = new LayerLensView(context.extensionUri, state);
@@ -76,11 +83,11 @@ export function activate(context: vscode.ExtensionContext): void {
     view.rerender();
   });
 
-  reg('layerLens.editColor', async (layer?: string) => {
+  reg('layerLens.editColor', async (arg?: unknown) => {
     const layers = state.layers();
     const colorOf = (name: string) => state.customColor(name) ?? defaultColor(name, layers.indexOf(name));
 
-    let name = typeof layer === 'string' ? layer.toLowerCase() : undefined;
+    let name = argOf(arg, 'layer')?.toLowerCase();
     if (!name || !layers.includes(name)) {
       const choice = await vscode.window.showQuickPick(
         layers.map((l) => ({ label: l, description: colorOf(l), iconPath: swatch(colorOf(l)) })),
@@ -144,9 +151,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
   /** The folder to create in: the given one, or the workspace root. */
   const resolveParent = async (target?: string): Promise<vscode.Uri | undefined> => {
-    if (typeof target === 'string' && target) {
+    if (target) {
       const uri = vscode.Uri.parse(target);
-      return vscode.workspace.getWorkspaceFolder(uri) && (await isDirectory(uri)) ? uri : undefined;
+      if (!vscode.workspace.getWorkspaceFolder(uri)) return undefined;
+      // Like the Explorer: for a file, create next to it.
+      return (await isDirectory(uri)) ? uri : vscode.Uri.joinPath(uri, '..');
     }
     const folders = vscode.workspace.workspaceFolders ?? [];
     if (folders.length <= 1) return folders[0]?.uri;
@@ -196,8 +205,22 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   };
 
-  reg('layerLens.newFile', (target?: string) => create('file', target));
-  reg('layerLens.newFolder', (target?: string) => create('folder', target));
+  reg('layerLens.newFile', (arg?: unknown) => create('file', argOf(arg, 'uri')));
+  reg('layerLens.newFolder', (arg?: unknown) => create('folder', argOf(arg, 'uri')));
+
+  const inWorkspace = (arg: unknown): vscode.Uri | undefined => {
+    const text = argOf(arg, 'uri');
+    const uri = text ? vscode.Uri.parse(text) : undefined;
+    return uri && vscode.workspace.getWorkspaceFolder(uri) ? uri : undefined;
+  };
+  reg('layerLens.reveal', async (arg?: unknown) => {
+    const uri = inWorkspace(arg);
+    if (uri) await vscode.commands.executeCommand('revealInExplorer', uri);
+  });
+  reg('layerLens.copyRelativePath', async (arg?: unknown) => {
+    const uri = inWorkspace(arg);
+    if (uri) await vscode.env.clipboard.writeText(vscode.workspace.asRelativePath(uri, false));
+  });
 
   // ---- refreshing --------------------------------------------------------
 

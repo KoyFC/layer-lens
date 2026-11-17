@@ -49,6 +49,8 @@ body {
 .chip.small[aria-pressed="true"] { font-weight: 400; }
 .chip.small:not([aria-pressed]) { border-style: dashed; }
 
+.tree { min-height: 60vh; }
+
 .message { padding: 4px 12px 8px; color: var(--vscode-descriptionForeground); }
 
 .row {

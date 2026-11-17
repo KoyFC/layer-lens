@@ -62,10 +62,11 @@
 
   function layerChip(l) {
     const b = chip(l.name, l.active, () => vscode.postMessage({ type: 'toggleLayer', layer: l.name }), l.color, false);
-    b.title = 'Click to show or hide. Right-click to change the color.';
-    b.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      vscode.postMessage({ type: 'command', id: 'layerLens.editColor', layer: l.name });
+    b.title = 'Click to show or hide. Right-click for more.';
+    b.dataset.vscodeContext = JSON.stringify({
+      webviewSection: 'layer',
+      layer: l.name,
+      preventDefaultContextMenuItems: true,
     });
     return b;
   }
@@ -89,6 +90,12 @@
     el.setAttribute('role', 'treeitem');
     el.style.paddingLeft = 6 + depth * 14 + 'px';
     el.title = node.label;
+    // VS Code reads this to show the "webview/context" menu declared in package.json.
+    el.dataset.vscodeContext = JSON.stringify({
+      webviewSection: node.isDir ? 'dir' : 'file',
+      uri: node.uri,
+      preventDefaultContextMenuItems: true,
+    });
 
     if (node.layer) {
       el.classList.add('in-layer');
@@ -117,8 +124,8 @@
       actions.appendChild(actionButton(NEW_FILE, 'New file', 'command', node.uri, 'layerLens.newFile'));
       actions.appendChild(actionButton(NEW_FOLDER, 'New folder', 'command', node.uri, 'layerLens.newFolder'));
     }
-    actions.appendChild(actionButton('⌖', 'Reveal in Explorer', 'reveal', node.uri));
-    actions.appendChild(actionButton('⧉', 'Copy relative path', 'copy', node.uri));
+    actions.appendChild(actionButton('⌖', 'Reveal in Explorer', 'command', node.uri, 'layerLens.reveal'));
+    actions.appendChild(actionButton('⧉', 'Copy relative path', 'command', node.uri, 'layerLens.copyRelativePath'));
     el.appendChild(actions);
 
     return { el, twisty, icon };
@@ -199,6 +206,9 @@
       render();
     }
   });
+
+  // Right-clicking the empty part of the tree offers to create at the workspace root.
+  $('tree').dataset.vscodeContext = JSON.stringify({ webviewSection: 'root', preventDefaultContextMenuItems: true });
 
   vscode.postMessage({ type: 'ready' });
 })();
