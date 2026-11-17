@@ -12,6 +12,7 @@ With only `application` enabled you see every controller/service across all cont
 ## Usage
 
 - A colored chip per layer sits right under the view title. Click a chip to show or hide that layer; filled dot = visible.
+- **Shift or Ctrl+click** a chip to show only that layer (do it again to bring them all back); right-click a chip for *Show only this layer*. **Hide all** / **Show all** turns every layer off or on at once.
 - Each layer has its own color: its folder and everything inside get a tinted background and a colored edge, so layers are easy to tell apart.
 - The **Other folders** and **Flatten layer** chips toggle the remaining folders/files and the layer-node removal (single active layer only).
 - **Layers are detected automatically** the first time a workspace is opened: any folder name repeated inside two or more sibling folders (`contexts/users/application`, `contexts/orders/application`, …) is offered in a checklist. Uncheck false positives, or type a name to add one that was missed. The names in `layerLens.layers` are always offered.

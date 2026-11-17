@@ -15,6 +15,7 @@ const COMMANDS = new Set([
   'layerLens.newFolder',
   'layerLens.editLayers',
   'layerLens.editColor',
+  'layerLens.soloLayer',
   'layerLens.reveal',
   'layerLens.copyRelativePath',
   'layerLens.rescan',
@@ -108,7 +109,11 @@ export class LayerLensView implements vscode.WebviewViewProvider {
       case 'ready':
         return this.post();
       case 'toggleLayer':
-        this.state.set(String(msg.layer), !this.state.isActive(String(msg.layer)));
+        if (msg.solo) this.state.solo(String(msg.layer));
+        else this.state.set(String(msg.layer), !this.state.isActive(String(msg.layer)));
+        return this.post();
+      case 'toggleAll':
+        this.state.toggleAll();
         return this.post();
       case 'toggleOthers':
         this.state.toggleOthers();

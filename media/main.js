@@ -61,8 +61,14 @@
   }
 
   function layerChip(l) {
-    const b = chip(l.name, l.active, () => vscode.postMessage({ type: 'toggleLayer', layer: l.name }), l.color, false);
-    b.title = 'Click to show or hide. Right-click for more.';
+    const b = chip(
+      l.name,
+      l.active,
+      (e) => vscode.postMessage({ type: 'toggleLayer', layer: l.name, solo: e.shiftKey || e.ctrlKey || e.metaKey }),
+      l.color,
+      false,
+    );
+    b.title = 'Click: show or hide. Shift or Ctrl+click: show only this one. Right-click: more.';
     b.dataset.vscodeContext = JSON.stringify({
       webviewSection: 'layer',
       layer: l.name,
@@ -173,10 +179,10 @@
   function render() {
     loadFonts(model.icons.fonts);
     const chips = $('chips');
+    const allOn = model.layers.length > 0 && model.layers.every((l) => l.active);
     chips.replaceChildren(
-      ...model.layers.map((l) =>
-        layerChip(l),
-      ),
+      ...model.layers.map(layerChip),
+      chip(allOn ? 'Hide all' : 'Show all', null, () => vscode.postMessage({ type: 'toggleAll' }), null, true),
     );
 
     $('options').replaceChildren(

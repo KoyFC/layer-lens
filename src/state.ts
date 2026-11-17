@@ -100,6 +100,18 @@ export class FilterState {
     this.persist();
   }
 
+  /** Shows only this layer; when it is already the only one, shows every layer again. */
+  solo(layer: string): void {
+    const only = this.activeLayers();
+    const already = only.length === 1 && only[0] === layer.toLowerCase();
+    this.setAll(already ? this.layers() : [layer]);
+  }
+
+  /** Hides every layer when all are visible, otherwise shows them all. */
+  toggleAll(): void {
+    this.setAll(this.activeLayers().length === this.layers().length ? [] : this.layers());
+  }
+
   toggleOthers(): void {
     this.showOthers = !this.showOthers;
     this.persist();

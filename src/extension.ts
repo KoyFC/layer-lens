@@ -113,6 +113,12 @@ export function activate(context: vscode.ExtensionContext): void {
     state.setAll(picked.map((p) => p.label));
     view.rerender();
   });
+  reg('layerLens.soloLayer', (arg?: unknown) => {
+    const layer = argOf(arg, 'layer');
+    if (!layer) return;
+    state.solo(layer);
+    view.rerender();
+  });
   reg('layerLens.showAll', () => {
     state.setAll(state.layers());
     view.rerender();
