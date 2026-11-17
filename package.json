@@ -1,0 +1,134 @@
+{
+  "name": "layer-lens",
+  "displayName": "Layer Lens",
+  "description": "Filter the folder tree by layers (application, domain, infrastructure) in projects organized by contexts.",
+  "version": "0.1.0",
+  "publisher": "local",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/{application,domain,infrastructure}"
+  ],
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "type": "webview",
+          "id": "layerLens.tree",
+          "name": "Layer Lens"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "layerLens.pickLayers",
+        "title": "Layer Lens: pick layers…",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "layerLens.showAll",
+        "title": "Layer Lens: show all layers"
+      },
+      {
+        "command": "layerLens.toggleOthers",
+        "title": "Layer Lens: toggle other folders and files"
+      },
+      {
+        "command": "layerLens.toggleFlatten",
+        "title": "Layer Lens: flatten layer folder (only with a single active layer)"
+      },
+      {
+        "command": "layerLens.refresh",
+        "title": "Layer Lens: refresh",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "layerLens.pickLayers",
+          "when": "view == layerLens.tree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "layerLens.refresh",
+          "when": "view == layerLens.tree",
+          "group": "navigation@2"
+        },
+        {
+          "command": "layerLens.showAll",
+          "when": "view == layerLens.tree",
+          "group": "1_filter@1"
+        },
+        {
+          "command": "layerLens.toggleOthers",
+          "when": "view == layerLens.tree",
+          "group": "1_filter@2"
+        },
+        {
+          "command": "layerLens.toggleFlatten",
+          "when": "view == layerLens.tree",
+          "group": "1_filter@3"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Layer Lens",
+      "properties": {
+        "layerLens.layers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "application",
+            "domain",
+            "infrastructure"
+          ],
+          "description": "Folder names (case-insensitive) treated as layers."
+        },
+        "layerLens.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "node_modules",
+            "dist",
+            "build",
+            "out",
+            ".git",
+            "coverage",
+            ".next",
+            ".turbo"
+          ],
+          "description": "Folder/file names that are never shown."
+        },
+        "layerLens.flattenLayerFolder": {
+          "type": "boolean",
+          "default": false,
+          "description": "With a single active layer, omit the layer node and list its files directly under the context."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "build": "tsc --noEmit && node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "package": "npm run build && vsce package --allow-missing-repository --skip-license"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0"
+  }
+}
