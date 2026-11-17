@@ -162,3 +162,10 @@ body {
   border: 1px solid var(--vscode-inputValidation-errorBorder);
   border-top: none;
 }
+
+.row.dragging { opacity: 0.5; }
+.row.drop-target, .tree.drop-target {
+  background: var(--vscode-list-dropBackground);
+  outline: 1px dashed var(--vscode-focusBorder);
+  outline-offset: -1px;
+}

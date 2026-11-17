@@ -9,6 +9,8 @@
   let pending = null;
   /** Rows drawn in the tree: uri -> { el, label, node, siblings }. Rebuilt on every render. */
   const rows = new Map();
+  /** The row being dragged: { uri }. Null when nothing is. */
+  let drag = null;
   const loadedFonts = new Set();
 
   const $ = (id) => document.getElementById(id);
@@ -176,6 +178,60 @@
     return b;
   }
 
+  // ---- dragging rows to move them -------------------------------------
+
+  function parentUri(uri) {
+    return uri.slice(0, uri.lastIndexOf('/'));
+  }
+
+  /** Whether dropping the dragged row on this folder does something. */
+  function canDrop(target, copy) {
+    if (!drag || drag.uri === target) return false;
+    if (target.startsWith(drag.uri + '/')) return false; // into itself
+    return copy || parentUri(drag.uri) !== target;      // moving to where it already is does nothing
+  }
+
+  let dropEl = null;
+  let expandTimer = null;
+
+  function clearDropTarget() {
+    if (dropEl) { dropEl.classList.remove('drop-target'); dropEl = null; }
+    if (expandTimer) { clearTimeout(expandTimer); expandTimer = null; }
+  }
+
+  function endDrag() {
+    drag = null;
+    clearDropTarget();
+    for (const r of document.querySelectorAll('.dragging')) r.classList.remove('dragging');
+  }
+
+  function wantsCopy(e) {
+    return e.ctrlKey || e.altKey;
+  }
+
+  function dropOn(target, e) {
+    e.preventDefault();
+    const source = drag && drag.uri;
+    const copy = wantsCopy(e);
+    const allowed = canDrop(target, copy);
+    endDrag();
+    if (source && allowed) vscode.postMessage({ type: 'move', source, target, copy });
+  }
+
+  // Dropping on empty space moves into the workspace root (single-folder workspaces).
+  $('tree').addEventListener('dragover', (e) => {
+    if (e.target !== $('tree') || !model || !model.rootUri || !canDrop(model.rootUri, wantsCopy(e))) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = wantsCopy(e) ? 'copy' : 'move';
+    if (dropEl !== $('tree')) { clearDropTarget(); dropEl = $('tree'); dropEl.classList.add('drop-target'); }
+  });
+  $('tree').addEventListener('dragleave', (e) => {
+    if (e.target === $('tree')) clearDropTarget();
+  });
+  $('tree').addEventListener('drop', (e) => {
+    if (e.target === $('tree') && model && model.rootUri) dropOn(model.rootUri, e);
+  });
+
   function row(node, depth) {
     const el = document.createElement('div');
     el.className = 'row';
@@ -183,6 +239,19 @@
     el.setAttribute('role', 'treeitem');
     el.style.paddingLeft = 6 + depth * 14 + 'px';
     el.title = node.label;
+
+    // Rows can be dragged onto a folder to move them (Ctrl or Alt copies instead).
+    if (!node.workspaceRoot) {
+      el.draggable = true;
+      el.addEventListener('dragstart', (e) => {
+        if (pending) { e.preventDefault(); return; } // a name is being typed
+        drag = { uri: node.uri };
+        e.dataTransfer.setData('text/plain', node.uri);
+        e.dataTransfer.effectAllowed = 'copyMove';
+        el.classList.add('dragging');
+      });
+      el.addEventListener('dragend', endDrag);
+    }
     // VS Code reads this to show the "webview/context" menu declared in package.json.
     el.dataset.vscodeContext = JSON.stringify({
       webviewSection: node.isDir ? 'dir' : 'file',
@@ -272,6 +341,27 @@
         apply();
       };
       apply();
+
+      el.addEventListener('dragover', (e) => {
+        if (!canDrop(node.uri, wantsCopy(e))) return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = wantsCopy(e) ? 'copy' : 'move';
+        if (dropEl !== el) {
+          clearDropTarget();
+          dropEl = el;
+          el.classList.add('drop-target');
+          // Like the Explorer, a closed folder opens when hovered for a moment.
+          if (collapsed.has(node.key)) {
+            expandTimer = setTimeout(() => { collapsed.delete(node.key); persist(); apply(); }, 700);
+          }
+        }
+      });
+      el.addEventListener('dragleave', (e) => {
+        if (!el.contains(e.relatedTarget)) clearDropTarget();
+      });
+      el.addEventListener('drop', (e) => { e.stopPropagation(); dropOn(node.uri, e); });
+
       el.addEventListener('click', toggle);
       el.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }

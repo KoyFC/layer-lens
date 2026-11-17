@@ -415,6 +415,57 @@ export function activate(context: vscode.ExtensionContext): void {
     if (target) vscode.window.setStatusBarMessage(`Layer Lens: created ${baseName(target)}`, 2500);
   });
 
+  /** Drag and drop from the page: moves `source` into the folder `target`, or copies it when asked. */
+  reg('layerLens.moveTo', async (sourceText?: unknown, targetText?: unknown, copy?: unknown) => {
+    if (typeof sourceText !== 'string' || typeof targetText !== 'string') return;
+    const source = vscode.Uri.parse(sourceText);
+    const target = vscode.Uri.parse(targetText);
+    if (!vscode.workspace.getWorkspaceFolder(source) || !vscode.workspace.getWorkspaceFolder(target)) return;
+    if (isWorkspaceRoot(source) || !(await isDirectory(target))) return;
+
+    const name = baseName(source);
+    if (target.toString() === source.toString() || (target.path + '/').startsWith(source.path + '/')) {
+      void vscode.window.showErrorMessage(`Layer Lens: cannot move '${name}' into itself.`);
+      return;
+    }
+
+    if (copy === true) {
+      const made = await copyInto(source, target); // picks a free name, as with paste
+      if (made) vscode.window.setStatusBarMessage(`Layer Lens: copied ${baseName(made)}`, 2500);
+      return;
+    }
+    if (vscode.Uri.joinPath(source, '..').toString() === target.toString()) return;
+
+    // Same prompts as the Explorer, following its settings.
+    if (vscode.workspace.getConfiguration('explorer').get<boolean>('confirmDragAndDrop', true)) {
+      const move = 'Move';
+      const picked = await vscode.window.showWarningMessage(
+        `Are you sure you want to move '${name}' into '${baseName(target) || 'the workspace root'}'?`,
+        { modal: true },
+        move,
+      );
+      if (picked !== move) return;
+    }
+
+    const destination = vscode.Uri.joinPath(target, name);
+    let overwrite = false;
+    if (await exists(destination)) {
+      const replace = 'Replace';
+      const picked = await vscode.window.showWarningMessage(
+        `'${name}' already exists in the destination folder. Do you want to replace it?`,
+        { modal: true, detail: 'This action is irreversible!' },
+        replace,
+      );
+      if (picked !== replace) return;
+      overwrite = true;
+    }
+
+    const edit = new vscode.WorkspaceEdit();
+    edit.renameFile(source, destination, { overwrite });
+    if (await vscode.workspace.applyEdit(edit)) view.refresh();
+    else void vscode.window.showErrorMessage(`Layer Lens: could not move '${name}'.`);
+  });
+
   reg('layerLens.reveal', async (arg?: unknown) => {
     const uri = inWorkspace(arg);
     if (uri) await vscode.commands.executeCommand('revealInExplorer', uri);

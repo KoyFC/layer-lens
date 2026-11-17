@@ -176,6 +176,9 @@ export class LayerLensView implements vscode.WebviewViewProvider {
         void this.view?.webview.postMessage({ type: 'renameResult', error });
         return;
       }
+      case 'move':
+        await vscode.commands.executeCommand('layerLens.moveTo', msg.source, msg.target, msg.copy === true);
+        return;
       case 'createFallback':
         // The folder is not showing in the tree (hidden by the filters), so ask in the input box instead.
         await vscode.commands.executeCommand('layerLens.createWithPopup', msg.kind, msg.uri);
