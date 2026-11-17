@@ -14,6 +14,9 @@ export interface TreeNode {
   layer?: string;
   /** True for the layer folder itself (e.g. `application`). */
   layerRoot?: boolean;
+  /** Icon theme definition ids, set by IconTheme.annotate. */
+  icon?: string;
+  iconOpen?: string;
   children?: TreeNode[];
 }
 

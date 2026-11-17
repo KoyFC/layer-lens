@@ -3,10 +3,44 @@
   const saved = vscode.getState() || { collapsed: [] };
   const collapsed = new Set(saved.collapsed);
   let model = null;
+  const loadedFonts = new Set();
 
   const $ = (id) => document.getElementById(id);
   const FOLDER = '<svg viewBox="0 0 16 16"><path d="M1.5 3A1.5 1.5 0 0 1 3 1.5h3l1.5 1.5H13A1.5 1.5 0 0 1 14.5 4.5v7.5A1.5 1.5 0 0 1 13 13.5H3A1.5 1.5 0 0 1 1.5 12z"/></svg>';
   const FILE = '<svg viewBox="0 0 16 16"><path d="M3.5 1h5.6L13 4.9V14a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm5 1v3h3z"/></svg>';
+
+  function loadFonts(fonts) {
+    for (const font of fonts) {
+      const sources = font.sources.map((s) => 'url("' + s.url + '") format("' + s.format + '")').join(', ');
+      if (loadedFonts.has(font.family + sources)) continue;
+      loadedFonts.add(font.family + sources);
+      const face = new FontFace(font.family, sources, { weight: font.weight || 'normal', style: font.style || 'normal' });
+      face.load().then((f) => { document.fonts.add(f); }).catch(() => {});
+    }
+  }
+
+  /** Fills `holder` with the theme icon for `id`, or the generic folder/file icon. */
+  function setIcon(holder, node, open) {
+    const id = node.isDir && open ? node.iconOpen : node.icon;
+    const def = id && model.icons.defs[id];
+    holder.replaceChildren();
+    if (def && def.src) {
+      const img = document.createElement('img');
+      img.src = def.src;
+      img.alt = '';
+      holder.appendChild(img);
+    } else if (def && def.char) {
+      const glyph = document.createElement('span');
+      glyph.className = 'glyph';
+      glyph.textContent = def.char;
+      glyph.style.fontFamily = def.family;
+      if (def.size) glyph.style.fontSize = def.size;
+      if (def.color) glyph.style.color = def.color;
+      holder.appendChild(glyph);
+    } else {
+      holder.innerHTML = node.isDir ? FOLDER : FILE;
+    }
+  }
 
   function persist() {
     vscode.setState({ collapsed: [...collapsed] });
@@ -54,8 +88,9 @@
     el.appendChild(twisty);
 
     const icon = document.createElement('span');
-    icon.innerHTML = node.isDir ? FOLDER : FILE;
-    el.appendChild(icon.firstChild);
+    icon.className = 'icon';
+    setIcon(icon, node, false);
+    el.appendChild(icon);
 
     const label = document.createElement('span');
     label.className = 'label';
@@ -68,12 +103,12 @@
     actions.appendChild(actionButton('⧉', 'Copy relative path', 'copy', node.uri));
     el.appendChild(actions);
 
-    return { el, twisty };
+    return { el, twisty, icon };
   }
 
   function renderNodes(nodes, depth, parent) {
     for (const node of nodes) {
-      const { el, twisty } = row(node, depth);
+      const { el, twisty, icon } = row(node, depth);
       parent.appendChild(el);
 
       if (!node.isDir) {
@@ -94,6 +129,7 @@
         const isCollapsed = collapsed.has(node.key);
         group.hidden = isCollapsed;
         twisty.classList.toggle('open', !isCollapsed);
+        setIcon(icon, node, !isCollapsed);
         el.setAttribute('aria-expanded', String(!isCollapsed));
       };
       const toggle = () => {
@@ -110,6 +146,7 @@
   }
 
   function render() {
+    loadFonts(model.icons.fonts);
     const chips = $('chips');
     chips.replaceChildren(
       ...model.layers.map((l) =>

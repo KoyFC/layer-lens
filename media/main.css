@@ -64,7 +64,10 @@ body {
 .row .label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 .row .twisty { width: 16px; text-align: center; flex: none; transition: transform 0.1s; opacity: 0.8; }
 .row .twisty.open { transform: rotate(90deg); }
-.row svg { width: 16px; height: 16px; flex: none; fill: currentColor; opacity: 0.85; }
+.row .icon { width: 16px; height: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; }
+.row .icon img, .row .icon svg { width: 16px; height: 16px; }
+.row .icon svg { fill: currentColor; opacity: 0.85; }
+.row .icon .glyph { line-height: 1; font-style: normal; }
 
 .row:hover { background: var(--vscode-list-hoverBackground); }
 .row:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
@@ -78,7 +81,7 @@ body {
   background: color-mix(in srgb, var(--c) 22%, transparent);
   font-weight: 600;
 }
-.row.layer-root svg { fill: var(--c); opacity: 1; }
+.row.layer-root .icon svg { fill: var(--c); opacity: 1; }
 .row.layer-root:hover { background: color-mix(in srgb, var(--c) 32%, transparent); }
 
 .actions { display: none; gap: 2px; flex: none; }

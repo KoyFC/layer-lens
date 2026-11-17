@@ -53,7 +53,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidChangeWorkspaceFolders(schedule),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('layerLens')) view.refresh();
+      if (e.affectsConfiguration('workbench.iconTheme')) view.themeChanged();
     }),
+    vscode.window.onDidChangeActiveColorTheme(() => view.themeChanged()),
+    vscode.extensions.onDidChange(() => view.themeChanged()),
     { dispose: () => timer && clearTimeout(timer) },
   );
 }

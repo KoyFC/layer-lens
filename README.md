@@ -16,6 +16,7 @@ With only `application` enabled you see every controller/service across all cont
 - The **Other folders** and **Flatten layer** chips toggle the remaining folders/files and the layer-node removal (single active layer only).
 - Click a folder to collapse it, a file to open it; hover a row for *Reveal in Explorer* and *Copy relative path*.
 - The view's toolbar also has `Layer Lens: pick layers…` for custom layers.
+- Files and folders use your active file icon theme (`workbench.iconTheme`), SVG- or font-based. With no icon theme selected, generic icons are used.
 - State is stored per workspace.
 
 ## Settings
@@ -35,4 +36,4 @@ npm run package        # produces layer-lens-<version>.vsix
 code --install-extension layer-lens-0.1.0.vsix
 ```
 
-The view is a webview, so it does not use the file icon theme. Press F5 to launch an Extension Development Host.
+Press F5 to launch an Extension Development Host.
