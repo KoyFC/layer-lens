@@ -1,0 +1,52 @@
+name: Release
+
+# Release manually from the Actions tab
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version being built, e.g. 0.1.0"
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    # Creating a release writes to the repository
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The package takes its version from package.json, so the input has to be written there first.
+      - name: Set the version
+        run: npm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Build and package
+        run: npm run package
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: layer-lens-${{ inputs.version }}
+          path: layer-lens-${{ inputs.version }}.vsix
+          if-no-files-found: error
+
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ inputs.version }}" "layer-lens-${{ inputs.version }}.vsix" \
+            --repo ${{ github.repository }} \
+            --target ${{ github.sha }} \
+            --title "Layer Lens ${{ inputs.version }}" \
+            --generate-notes \
+            --draft
