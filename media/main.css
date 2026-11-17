@@ -47,6 +47,7 @@ body {
 .chip.small { font-size: 0.9em; padding: 0 8px; line-height: 16px; --c: var(--vscode-descriptionForeground); }
 .chip.small::before { display: none; }
 .chip.small[aria-pressed="true"] { font-weight: 400; }
+.chip.small:not([aria-pressed]) { border-style: dashed; }
 
 .message { padding: 4px 12px 8px; color: var(--vscode-descriptionForeground); }
 

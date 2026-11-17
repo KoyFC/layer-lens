@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { IconTheme } from './iconTheme';
 import { LayerModel } from './layerTree';
-import { FilterState, configuredLayers } from './state';
+import { FilterState } from './state';
 
 const LAYER_COLORS: Record<string, string> = {
   application: '#4d9de0',
@@ -9,6 +9,12 @@ const LAYER_COLORS: Record<string, string> = {
   infrastructure: '#e8a33d',
 };
 const FALLBACK_COLORS = ['#a77bd9', '#e0607e', '#2ec4c4', '#c9b037', '#8c9bd6', '#d98a6c'];
+
+const COMMANDS = new Set([
+  'layerLens.addLayer',
+  'layerLens.editLayers',
+  'layerLens.rescan',
+]);
 
 export function layerColor(layer: string, index: number): string {
   return LAYER_COLORS[layer] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length];
@@ -68,7 +74,7 @@ export class LayerLensView implements vscode.WebviewViewProvider {
 
   private async post(): Promise<void> {
     if (!this.view) return;
-    const layers = configuredLayers().map((name, i) => ({
+    const layers = this.state.layers().map((name, i) => ({
       name,
       color: layerColor(name, i),
       active: this.state.isActive(name),
@@ -106,6 +112,10 @@ export class LayerLensView implements vscode.WebviewViewProvider {
       case 'toggleFlatten':
         this.state.toggleFlatten();
         return this.post();
+      case 'command':
+        // Only the view's own commands can be triggered from the page.
+        if (COMMANDS.has(String(msg.id))) await vscode.commands.executeCommand(String(msg.id), msg.uri);
+        return;
       case 'open':
       case 'reveal':
       case 'copy': {

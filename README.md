@@ -14,16 +14,16 @@ With only `application` enabled you see every controller/service across all cont
 - A colored chip per layer sits right under the view title. Click a chip to show or hide that layer; filled dot = visible.
 - Each layer has its own color: its folder and everything inside get a tinted background and a colored edge, so layers are easy to tell apart.
 - The **Other folders** and **Flatten layer** chips toggle the remaining folders/files and the layer-node removal (single active layer only).
-- Click a folder to collapse it, a file to open it; hover a row for *Reveal in Explorer* and *Copy relative path*.
-- The view's toolbar also has `Layer Lens: pick layers…` for custom layers.
-- Files and folders use your active file icon theme (`workbench.iconTheme`), SVG- or font-based. With no icon theme selected, generic icons are used.
+- **Layers are detected automatically** the first time a workspace is opened: any folder name repeated inside two or more sibling folders (`contexts/users/application`, `contexts/orders/application`, …) becomes a layer. The names in `layerLens.layers` are always included.
+- **Add layer**, **Edit layers** and **Rescan** (chips under the filters, also in the `…` menu) change that list by hand. Rescan only adds newly found names; use Edit layers to remove one.
 - State is stored per workspace.
 
 ## Settings
 
 | Setting | Default | Description |
 |---|---|---|
-| `layerLens.layers` | `application, domain, infrastructure` | Folder names treated as layers |
+| `layerLens.layers` | `application, domain, infrastructure` | Folder names always treated as layers |
+| `layerLens.autoDetect` | `true` | Scan for repeated folder names the first time a workspace is opened |
 | `layerLens.exclude` | `node_modules, dist, build, …` | Names that are never shown |
 | `layerLens.flattenLayerFolder` | `false` | With a single active layer, hide the layer node |
 

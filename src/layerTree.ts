@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { FilterState, configuredLayers, excludedNames } from './state';
+import { FilterState, excludedNames } from './state';
 
 const MAX_DEPTH = 12;
 const MAX_NODES = 8000;
@@ -72,7 +72,7 @@ export class LayerModel {
   }
 
   private async visibleChildren(dir: vscode.Uri, layer: string | undefined): Promise<TreeNode[]> {
-    const layers = configuredLayers();
+    const layers = this.state.layers();
     const exclude = excludedNames();
     const activeCount = this.state.activeLayers().length;
     const out: TreeNode[] = [];
@@ -131,7 +131,7 @@ export class LayerModel {
     if (cached !== undefined) return cached;
     if (depth > MAX_DEPTH) return false;
 
-    const layers = configuredLayers();
+    const layers = this.state.layers();
     const exclude = excludedNames();
     let found = false;
     for (const e of await this.read(dir)) {

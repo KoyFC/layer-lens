@@ -51,19 +51,20 @@
     b.className = 'chip' + (small ? ' small' : '');
     b.textContent = label;
     b.setAttribute('aria-pressed', String(pressed));
+    if (pressed === null) b.removeAttribute('aria-pressed');
     if (color) b.style.setProperty('--c', color);
     b.addEventListener('click', onClick);
     return b;
   }
 
-  function actionButton(text, title, type, uri) {
+  function actionButton(content, title, type, uri, command) {
     const b = document.createElement('button');
-    b.textContent = text;
+    if (content.startsWith('<')) b.innerHTML = content; else b.textContent = content;
     b.title = title;
     b.setAttribute('aria-label', title);
     b.addEventListener('click', (e) => {
       e.stopPropagation();
-      vscode.postMessage({ type, uri });
+      vscode.postMessage(command ? { type: 'command', id: command, uri } : { type, uri });
     });
     return b;
   }
@@ -157,6 +158,9 @@
     $('options').replaceChildren(
       chip('Other folders', model.showOthers, () => vscode.postMessage({ type: 'toggleOthers' }), null, true),
       chip('Flatten layer', model.flatten, () => vscode.postMessage({ type: 'toggleFlatten' }), null, true),
+      chip('Add layer', null, () => vscode.postMessage({ type: 'command', id: 'layerLens.addLayer' }), null, true),
+      chip('Edit layers', null, () => vscode.postMessage({ type: 'command', id: 'layerLens.editLayers' }), null, true),
+      chip('Rescan', null, () => vscode.postMessage({ type: 'command', id: 'layerLens.rescan' }), null, true),
     );
 
     const message = $('message');

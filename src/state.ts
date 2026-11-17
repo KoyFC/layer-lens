@@ -3,12 +3,22 @@ import * as vscode from 'vscode';
 const ACTIVE_KEY = 'layerLens.activeLayers';
 const OTHERS_KEY = 'layerLens.showOthers';
 const FLATTEN_KEY = 'layerLens.flatten';
+const LAYERS_KEY = 'layerLens.layerList';
 
 const DEFAULT_LAYERS = ['application', 'domain', 'infrastructure'];
 
-export function configuredLayers(): string[] {
+export function unique(list: string[]): string[] {
+  return [...new Set(list.map((l) => l.trim().toLowerCase()).filter(Boolean))];
+}
+
+/** Layer names from the `layerLens.layers` setting; they seed every workspace's list. */
+export function seedLayers(): string[] {
   const raw = vscode.workspace.getConfiguration('layerLens').get<string[]>('layers', DEFAULT_LAYERS);
-  return raw.map((l) => l.trim().toLowerCase()).filter(Boolean);
+  return unique(raw);
+}
+
+export function autoDetectEnabled(): boolean {
+  return vscode.workspace.getConfiguration('layerLens').get<boolean>('autoDetect', true);
 }
 
 export function excludedNames(): Set<string> {
@@ -17,13 +27,17 @@ export function excludedNames(): Set<string> {
 }
 
 export class FilterState {
+  private list: string[] | undefined;
   private active: Set<string>;
   showOthers: boolean;
   flatten: boolean;
+  /** Names found by the last scan with how many places repeat them (not persisted). */
+  candidates = new Map<string, number>();
 
   constructor(private readonly memento: vscode.Memento) {
+    this.list = memento.get<string[]>(LAYERS_KEY);
     const stored = memento.get<string[]>(ACTIVE_KEY);
-    this.active = new Set((stored ?? configuredLayers()).map((l) => l.toLowerCase()));
+    this.active = new Set((stored ?? this.layers()).map((l) => l.toLowerCase()));
     this.showOthers = memento.get<boolean>(OTHERS_KEY, false);
     this.flatten = memento.get<boolean>(
       FLATTEN_KEY,
@@ -31,12 +45,31 @@ export class FilterState {
     );
   }
 
+  /** The folder names treated as layers in this workspace: the saved list, or the settings before one exists. */
+  layers(): string[] {
+    return this.list ?? seedLayers();
+  }
+
+  hasSavedLayers(): boolean {
+    return this.list !== undefined;
+  }
+
+  /** Replaces the list; layers that are new start visible, dropped ones are forgotten. */
+  setLayers(layers: string[]): void {
+    const next = unique(layers);
+    const previous = new Set(this.layers());
+    for (const l of next) if (!previous.has(l)) this.active.add(l);
+    for (const l of [...this.active]) if (!next.includes(l)) this.active.delete(l);
+    this.list = next;
+    this.persist();
+  }
+
   isActive(layer: string): boolean {
     return this.active.has(layer.toLowerCase());
   }
 
   activeLayers(): string[] {
-    return [...this.active].filter((l) => configuredLayers().includes(l));
+    return this.layers().filter((l) => this.isActive(l));
   }
 
   set(layer: string, on: boolean): void {
@@ -60,7 +93,18 @@ export class FilterState {
     this.persist();
   }
 
+  /** Whether a path made of these directory segments shows up under the current filters. */
+  isVisible(directorySegments: string[]): boolean {
+    const layers = this.layers();
+    for (const seg of directorySegments) {
+      const lower = seg.toLowerCase();
+      if (layers.includes(lower)) return this.isActive(lower);
+    }
+    return this.showOthers;
+  }
+
   private persist(): void {
+    void this.memento.update(LAYERS_KEY, this.list);
     void this.memento.update(ACTIVE_KEY, [...this.active]);
     void this.memento.update(OTHERS_KEY, this.showOthers);
     void this.memento.update(FLATTEN_KEY, this.flatten);

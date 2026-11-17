@@ -47,6 +47,18 @@
         "command": "layerLens.refresh",
         "title": "Layer Lens: refresh",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "layerLens.addLayer",
+        "title": "Layer Lens: add layer…"
+      },
+      {
+        "command": "layerLens.editLayers",
+        "title": "Layer Lens: edit layers…"
+      },
+      {
+        "command": "layerLens.rescan",
+        "title": "Layer Lens: rescan layers"
       }
     ],
     "menus": {
@@ -75,6 +87,21 @@
           "command": "layerLens.toggleFlatten",
           "when": "view == layerLens.tree",
           "group": "1_filter@3"
+        },
+        {
+          "command": "layerLens.editLayers",
+          "when": "view == layerLens.tree",
+          "group": "2_layers@2"
+        },
+        {
+          "command": "layerLens.rescan",
+          "when": "view == layerLens.tree",
+          "group": "2_layers@3"
+        },
+        {
+          "command": "layerLens.addLayer",
+          "when": "view == layerLens.tree",
+          "group": "2_layers@1"
         }
       ]
     },
@@ -91,7 +118,7 @@
             "domain",
             "infrastructure"
           ],
-          "description": "Folder names (case-insensitive) treated as layers."
+          "description": "Folder names (case-insensitive) always treated as layers, in addition to the ones detected or added by hand."
         },
         "layerLens.exclude": {
           "type": "array",
@@ -114,6 +141,11 @@
           "type": "boolean",
           "default": false,
           "description": "With a single active layer, omit the layer node and list its files directly under the context."
+        },
+        "layerLens.autoDetect": {
+          "type": "boolean",
+          "default": true,
+          "description": "The first time a workspace is opened, scan it for folder names repeated across sibling folders (e.g. contexts/*/application) and treat them as layers. \"Layer Lens: rescan layers\" can be run at any time."
         }
       }
     }
