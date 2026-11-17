@@ -23,6 +23,9 @@ const COMMANDS = new Set([
   'layerLens.copyRelativePath',
   'layerLens.rename',
   'layerLens.delete',
+  'layerLens.copy',
+  'layerLens.paste',
+  'layerLens.duplicate',
   'layerLens.rescan',
 ]);
 

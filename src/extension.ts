@@ -337,6 +337,73 @@ export function activate(context: vscode.ExtensionContext): void {
     view.refresh();
   });
 
+  // ---- copy, paste and duplicate -----------------------------------------
+
+  /** What was copied; kept here because the API cannot put files on the system clipboard. */
+  let copied: vscode.Uri | undefined;
+  const setCopied = (uri: vscode.Uri | undefined): void => {
+    copied = uri;
+    void vscode.commands.executeCommand('setContext', 'layerLens.hasCopy', uri !== undefined);
+  };
+  setCopied(undefined);
+
+  /** `name`, or `name copy`, `name copy 2`… when that is taken; the extension stays before the suffix. */
+  const freeUri = async (dir: vscode.Uri, name: string, isDir: boolean): Promise<vscode.Uri> => {
+    const first = vscode.Uri.joinPath(dir, name);
+    if (!(await exists(first))) return first;
+    const dot = name.lastIndexOf('.');
+    const stem = !isDir && dot > 0 ? name.slice(0, dot) : name;
+    const ext = !isDir && dot > 0 ? name.slice(dot) : '';
+    for (let n = 1; n < 1000; n++) {
+      const candidate = vscode.Uri.joinPath(dir, `${stem} copy${n === 1 ? '' : ` ${n}`}${ext}`);
+      if (!(await exists(candidate))) return candidate;
+    }
+    throw new Error('Too many copies of this name');
+  };
+
+  /** Copies `source` into `dir` under a free name; reports a problem instead of throwing. */
+  const copyInto = async (source: vscode.Uri, dir: vscode.Uri): Promise<vscode.Uri | undefined> => {
+    try {
+      if (dir.toString() === source.toString() || (dir.path + '/').startsWith(source.path + '/')) {
+        throw new Error('A folder cannot be pasted into itself');
+      }
+      const target = await freeUri(dir, baseName(source), await isDirectory(source));
+      await vscode.workspace.fs.copy(source, target, { overwrite: false });
+      view.refresh();
+      return target;
+    } catch (err) {
+      void vscode.window.showErrorMessage(`Layer Lens: ${(err as Error).message}`);
+      return undefined;
+    }
+  };
+
+  reg('layerLens.copy', (arg?: unknown) => {
+    const uri = inWorkspace(arg);
+    if (!uri || isWorkspaceRoot(uri)) return;
+    setCopied(uri);
+    vscode.window.setStatusBarMessage(`Layer Lens: copied ${baseName(uri)}`, 2500);
+  });
+
+  reg('layerLens.paste', async (arg?: unknown) => {
+    if (!copied) return;
+    if (!(await exists(copied))) {
+      setCopied(undefined);
+      void vscode.window.showWarningMessage('Layer Lens: the copied item no longer exists.');
+      return;
+    }
+    const dir = await resolveParent(argOf(arg, 'uri'));
+    if (!dir) return;
+    const target = await copyInto(copied, dir);
+    if (target) vscode.window.setStatusBarMessage(`Layer Lens: pasted ${baseName(target)}`, 2500);
+  });
+
+  reg('layerLens.duplicate', async (arg?: unknown) => {
+    const uri = inWorkspace(arg);
+    if (!uri || isWorkspaceRoot(uri)) return;
+    const target = await copyInto(uri, vscode.Uri.joinPath(uri, '..'));
+    if (target) vscode.window.setStatusBarMessage(`Layer Lens: created ${baseName(target)}`, 2500);
+  });
+
   reg('layerLens.reveal', async (arg?: unknown) => {
     const uri = inWorkspace(arg);
     if (uri) await vscode.commands.executeCommand('revealInExplorer', uri);

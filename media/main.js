@@ -224,9 +224,15 @@
 
     // Same shortcuts as the Explorer.
     el.addEventListener('keydown', (e) => {
-      if (node.workspaceRoot || e.target !== el) return;
-      if (e.key === 'F2') { e.preventDefault(); vscode.postMessage({ type: 'command', id: 'layerLens.rename', uri: node.uri }); }
-      else if (e.key === 'Delete') { e.preventDefault(); vscode.postMessage({ type: 'command', id: 'layerLens.delete', uri: node.uri }); }
+      if (e.target !== el) return;
+      const run = (id) => { e.preventDefault(); vscode.postMessage({ type: 'command', id, uri: node.uri }); };
+      const accel = e.ctrlKey || e.metaKey;
+      const key = e.key.toLowerCase();
+      if (accel && key === 'v') run('layerLens.paste');
+      else if (node.workspaceRoot) return;
+      else if (e.key === 'F2') run('layerLens.rename');
+      else if (e.key === 'Delete') run('layerLens.delete');
+      else if (accel && key === 'c') run('layerLens.copy');
     });
 
     return { el, twisty, icon, label };

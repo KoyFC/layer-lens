@@ -114,6 +114,21 @@
         "command": "layerLens.delete",
         "title": "Delete",
         "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.copy",
+        "title": "Copy",
+        "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.paste",
+        "title": "Paste",
+        "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.duplicate",
+        "title": "Duplicate",
+        "category": "Layer Lens"
       }
     ],
     "menus": {
@@ -203,12 +218,27 @@
         {
           "command": "layerLens.rename",
           "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file)$/ && !workspaceRoot",
-          "group": "3_modify@1"
+          "group": "4_modify@1"
         },
         {
           "command": "layerLens.delete",
           "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file)$/ && !workspaceRoot",
-          "group": "3_modify@2"
+          "group": "4_modify@2"
+        },
+        {
+          "command": "layerLens.copy",
+          "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file)$/ && !workspaceRoot",
+          "group": "3_clipboard@1"
+        },
+        {
+          "command": "layerLens.paste",
+          "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file|root)$/ && layerLens.hasCopy",
+          "group": "3_clipboard@2"
+        },
+        {
+          "command": "layerLens.duplicate",
+          "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file)$/ && !workspaceRoot",
+          "group": "3_clipboard@3"
         }
       ],
       "commandPalette": [
@@ -230,6 +260,18 @@
         },
         {
           "command": "layerLens.delete",
+          "when": "false"
+        },
+        {
+          "command": "layerLens.copy",
+          "when": "false"
+        },
+        {
+          "command": "layerLens.paste",
+          "when": "false"
+        },
+        {
+          "command": "layerLens.duplicate",
           "when": "false"
         }
       ]
