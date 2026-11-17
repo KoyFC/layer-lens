@@ -129,6 +129,11 @@
         "command": "layerLens.duplicate",
         "title": "Duplicate",
         "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.undo",
+        "title": "Undo file operation",
+        "category": "Layer Lens"
       }
     ],
     "menus": {

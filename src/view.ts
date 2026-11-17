@@ -26,6 +26,7 @@ const COMMANDS = new Set([
   'layerLens.copy',
   'layerLens.paste',
   'layerLens.duplicate',
+  'layerLens.undo',
   'layerLens.rescan',
 ]);
 

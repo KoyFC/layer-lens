@@ -25,6 +25,57 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
+  // ---- undo --------------------------------------------------------------
+
+  /** One thing done through the tree that can be taken back. Kept in memory for this session only. */
+  interface UndoStep {
+    label: string;
+    /** Resolves with a problem, or undefined once it has been undone. */
+    undo: () => Promise<string | undefined>;
+  }
+  const undoStack: UndoStep[] = [];
+  const pushUndo = (step: UndoStep): void => {
+    undoStack.push(step);
+    if (undoStack.length > 50) undoStack.shift();
+  };
+
+  /** Moves `from` back to `to`, through a workspace edit so imports follow again. */
+  const moveBack = async (from: vscode.Uri, to: vscode.Uri): Promise<string | undefined> => {
+    if (!(await exists(from))) return `${baseName(from)} is no longer there`;
+    if (await exists(to)) return `${baseName(to)} already exists`;
+    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(to, '..'));
+    const edit = new vscode.WorkspaceEdit();
+    edit.renameFile(from, to);
+    return (await vscode.workspace.applyEdit(edit)) ? undefined : 'Could not move it back';
+  };
+
+  /** Removes something the tree made. It goes to the Trash when enabled, since it may have been edited since. */
+  const removeMade = async (uri: vscode.Uri): Promise<string | undefined> => {
+    if (!(await exists(uri))) return undefined;
+    const useTrash = vscode.workspace.getConfiguration().get<boolean>('files.enableTrash', true);
+    try {
+      await vscode.workspace.fs.delete(uri, { recursive: true, useTrash });
+      return undefined;
+    } catch (err) {
+      return `Could not remove ${baseName(uri)}: ${(err as Error).message}`;
+    }
+  };
+
+  reg('layerLens.undo', async () => {
+    const step = undoStack.pop();
+    if (!step) {
+      vscode.window.setStatusBarMessage('Layer Lens: nothing to undo', 2500);
+      return;
+    }
+    const problem = await step.undo();
+    if (problem) {
+      void vscode.window.showErrorMessage(`Layer Lens: could not undo ${step.label}: ${problem}`);
+      return;
+    }
+    view.refresh();
+    vscode.window.setStatusBarMessage(`Layer Lens: undid ${step.label}`, 2500);
+  });
+
   // ---- layers ------------------------------------------------------------
 
   /**
@@ -204,6 +255,15 @@ export function activate(context: vscode.ExtensionContext): void {
 
     const segments = name.trim().replace(/\/+$/, '').split('/');
     const uri = vscode.Uri.joinPath(parent, ...segments);
+    // The first folder on the way that does not exist yet is what undoing has to remove.
+    let top = uri;
+    for (let p = parent, i = 0; i < segments.length; i++) {
+      p = vscode.Uri.joinPath(p, segments[i]);
+      if (!(await exists(p))) {
+        top = p;
+        break;
+      }
+    }
     try {
       if (kind === 'folder') {
         await vscode.workspace.fs.createDirectory(uri);
@@ -215,6 +275,7 @@ export function activate(context: vscode.ExtensionContext): void {
       return `Could not create it: ${(err as Error).message}`;
     }
 
+    pushUndo({ label: `new ${kind} ${name.trim()}`, undo: () => removeMade(top) });
     view.refresh();
     if (kind === 'file') await vscode.commands.executeCommand('vscode.open', uri);
 
@@ -284,6 +345,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const edit = new vscode.WorkspaceEdit();
     edit.renameFile(uri, target);
     if (!(await vscode.workspace.applyEdit(edit))) return 'Could not rename it';
+    pushUndo({ label: `rename ${baseName(uri)}`, undo: () => moveBack(target, uri) });
     view.refresh();
     return undefined;
   };
@@ -380,6 +442,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       const target = await freeUri(dir, baseName(source), await isDirectory(source));
       await vscode.workspace.fs.copy(source, target, { overwrite: false });
+      pushUndo({ label: `copy of ${baseName(source)}`, undo: () => removeMade(target) });
       view.refresh();
       return target;
     } catch (err) {
@@ -462,8 +525,13 @@ export function activate(context: vscode.ExtensionContext): void {
 
     const edit = new vscode.WorkspaceEdit();
     edit.renameFile(source, destination, { overwrite });
-    if (await vscode.workspace.applyEdit(edit)) view.refresh();
-    else void vscode.window.showErrorMessage(`Layer Lens: could not move '${name}'.`);
+    if (await vscode.workspace.applyEdit(edit)) {
+      // A replaced item cannot be brought back, so only a plain move can be undone.
+      if (!overwrite) pushUndo({ label: `move ${name}`, undo: () => moveBack(destination, source) });
+      view.refresh();
+    } else {
+      void vscode.window.showErrorMessage(`Layer Lens: could not move '${name}'.`);
+    }
   });
 
   reg('layerLens.reveal', async (arg?: unknown) => {

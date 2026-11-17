@@ -628,6 +628,14 @@
     }
   });
 
+  // Ctrl+Z takes back the last file operation made from the tree.
+  document.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'z') return;
+    if (e.target.closest && e.target.closest('input, textarea')) return; // let a name field undo its own typing
+    e.preventDefault();
+    vscode.postMessage({ type: 'command', id: 'layerLens.undo' });
+  });
+
   // Right-clicking the empty part of the tree offers to create at the workspace root.
   $('tree').dataset.vscodeContext = JSON.stringify({ webviewSection: 'root', preventDefaultContextMenuItems: true });
 
