@@ -139,7 +139,8 @@ body {
 
 .row.creating { cursor: default; }
 .row.creating:hover { background: transparent; }
-.row.creating input {
+.row.creating input,
+.row .rename-input {
   flex: 1;
   min-width: 0;
   height: 20px;
@@ -150,7 +151,8 @@ body {
   border: 1px solid var(--vscode-focusBorder);
   outline: none;
 }
-.row.creating input.invalid { border-color: var(--vscode-inputValidation-errorBorder); }
+.row.creating input.invalid,
+.row .rename-input.invalid { border-color: var(--vscode-inputValidation-errorBorder); }
 .create-error {
   margin-right: 6px;
   padding: 3px 6px;

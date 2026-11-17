@@ -258,6 +258,85 @@ export function activate(context: vscode.ExtensionContext): void {
     const uri = text ? vscode.Uri.parse(text) : undefined;
     return uri && vscode.workspace.getWorkspaceFolder(uri) ? uri : undefined;
   };
+  const isWorkspaceRoot = (uri: vscode.Uri): boolean =>
+    (vscode.workspace.workspaceFolders ?? []).some((f) => f.uri.toString() === uri.toString());
+  const baseName = (uri: vscode.Uri): string => uri.path.slice(uri.path.lastIndexOf('/') + 1);
+
+  /** Renames in place through a workspace edit, so extensions can update imports like the Explorer does. */
+  const renameTo = async (uri: vscode.Uri, name: string): Promise<string | undefined> => {
+    const next = name.trim();
+    if (!next) return 'Enter a name';
+    if (/[\\/]/.test(next) || next === '.' || next === '..') return 'Names cannot contain slashes';
+    const target = vscode.Uri.joinPath(uri, '..', next);
+    if (target.toString() === uri.toString()) return undefined;
+    if (await exists(target)) return 'That name already exists';
+    const edit = new vscode.WorkspaceEdit();
+    edit.renameFile(uri, target);
+    if (!(await vscode.workspace.applyEdit(edit))) return 'Could not rename it';
+    view.refresh();
+    return undefined;
+  };
+
+  reg('layerLens.rename', async (arg?: unknown) => {
+    const uri = inWorkspace(arg);
+    if (!uri || isWorkspaceRoot(uri)) return;
+    if (view.startInlineRename(uri)) return;
+    const name = await vscode.window.showInputBox({ title: 'Rename', value: baseName(uri), validateInput: (v) => (v.trim() ? undefined : 'Enter a name') });
+    if (!name) return;
+    const error = await renameTo(uri, name);
+    if (error) void vscode.window.showErrorMessage(`Layer Lens: ${error}`);
+  });
+  // Called by the page once a new name has been typed in the tree.
+  reg('layerLens.renameTo', (uriText?: unknown, name?: unknown) => {
+    if (typeof uriText !== 'string' || typeof name !== 'string') return 'Invalid request';
+    const uri = vscode.Uri.parse(uriText);
+    if (!vscode.workspace.getWorkspaceFolder(uri) || isWorkspaceRoot(uri)) return 'Outside the workspace';
+    return renameTo(uri, name);
+  });
+
+  reg('layerLens.delete', async (arg?: unknown) => {
+    const uri = inWorkspace(arg);
+    if (!uri || isWorkspaceRoot(uri)) return;
+    const name = baseName(uri);
+    const settings = vscode.workspace.getConfiguration();
+    const useTrash = settings.get<boolean>('files.enableTrash', true);
+
+    // Same switches and wording as the Explorer.
+    if (settings.get<boolean>('explorer.confirmDelete', true)) {
+      const action = useTrash ? 'Move to Trash' : 'Delete';
+      const what = (await isDirectory(uri)) ? `'${name}' and its contents` : `'${name}'`;
+      const picked = await vscode.window.showWarningMessage(
+        `Are you sure you want to delete ${what}?`,
+        { modal: true, detail: useTrash ? 'You can restore it from the Trash.' : 'This action is irreversible!' },
+        action,
+      );
+      if (picked !== action) return;
+    }
+
+    try {
+      await vscode.workspace.fs.delete(uri, { recursive: true, useTrash });
+    } catch (err) {
+      if (!useTrash) {
+        void vscode.window.showErrorMessage(`Layer Lens: could not delete ${name}: ${(err as Error).message}`);
+        return;
+      }
+      const permanent = 'Delete Permanently';
+      const picked = await vscode.window.showWarningMessage(
+        `Could not move '${name}' to the Trash. Delete it permanently instead?`,
+        { modal: true, detail: (err as Error).message },
+        permanent,
+      );
+      if (picked !== permanent) return;
+      try {
+        await vscode.workspace.fs.delete(uri, { recursive: true, useTrash: false });
+      } catch (err2) {
+        void vscode.window.showErrorMessage(`Layer Lens: could not delete ${name}: ${(err2 as Error).message}`);
+        return;
+      }
+    }
+    view.refresh();
+  });
+
   reg('layerLens.reveal', async (arg?: unknown) => {
     const uri = inWorkspace(arg);
     if (uri) await vscode.commands.executeCommand('revealInExplorer', uri);

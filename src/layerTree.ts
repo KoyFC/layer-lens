@@ -14,6 +14,8 @@ export interface TreeNode {
   layer?: string;
   /** True for the layer folder itself (e.g. `application`). */
   layerRoot?: boolean;
+  /** True for a workspace folder shown as a root in a multi-root workspace. */
+  workspaceRoot?: boolean;
   /** Icon theme definition ids, set by IconTheme.annotate. */
   icon?: string;
   iconOpen?: string;
@@ -49,7 +51,14 @@ export class LayerModel {
     for (const f of folders) {
       const children = await this.visibleChildren(f.uri, undefined);
       if (children.length === 0) continue;
-      roots.push({ key: f.uri.toString(), uri: f.uri.toString(), label: f.name, isDir: true, children: await this.populate(children) });
+      roots.push({
+        key: f.uri.toString(),
+        uri: f.uri.toString(),
+        label: f.name,
+        isDir: true,
+        workspaceRoot: true,
+        children: await this.populate(children),
+      });
     }
     return roots;
   }

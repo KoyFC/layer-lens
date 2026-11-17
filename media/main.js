@@ -7,6 +7,8 @@
   const groups = new Map();
   /** The name field being typed, if any: { kind, uri, value, caret, error, submitting, input }. */
   let pending = null;
+  /** Rows drawn in the tree: uri -> { el, label, node, siblings }. Rebuilt on every render. */
+  const rows = new Map();
   const loadedFonts = new Set();
 
   const $ = (id) => document.getElementById(id);
@@ -185,6 +187,7 @@
     el.dataset.vscodeContext = JSON.stringify({
       webviewSection: node.isDir ? 'dir' : 'file',
       uri: node.uri,
+      workspaceRoot: !!node.workspaceRoot,
       preventDefaultContextMenuItems: true,
     });
 
@@ -219,13 +222,21 @@
     actions.appendChild(actionButton('⧉', 'Copy relative path', 'command', node.uri, 'layerLens.copyRelativePath'));
     el.appendChild(actions);
 
-    return { el, twisty, icon };
+    // Same shortcuts as the Explorer.
+    el.addEventListener('keydown', (e) => {
+      if (node.workspaceRoot || e.target !== el) return;
+      if (e.key === 'F2') { e.preventDefault(); vscode.postMessage({ type: 'command', id: 'layerLens.rename', uri: node.uri }); }
+      else if (e.key === 'Delete') { e.preventDefault(); vscode.postMessage({ type: 'command', id: 'layerLens.delete', uri: node.uri }); }
+    });
+
+    return { el, twisty, icon, label };
   }
 
   function renderNodes(nodes, depth, parent) {
     for (const node of nodes) {
-      const { el, twisty, icon } = row(node, depth);
+      const { el, twisty, icon, label } = row(node, depth);
       parent.appendChild(el);
+      rows.set(node.uri, { el, label, node, siblings: nodes });
 
       if (!node.isDir) {
         const open = () => vscode.postMessage({ type: 'open', uri: node.uri });
@@ -302,6 +313,7 @@
   function renderPending() {
     // While the extension is creating it the field stays gone: success refreshes the tree under it.
     if (!pending || pending.submitting) return;
+    if (pending.mode === 'rename') { renderRename(); return; }
     const target = groups.get(pending.uri);
     if (!target) { pending = null; return; }
 
@@ -360,6 +372,95 @@
     wrap.scrollIntoView({ block: 'nearest' });
   }
 
+  // ---- renaming a row in place ---------------------------------------
+
+  function baseName(uri) {
+    return decodeURIComponent(uri.slice(uri.lastIndexOf('/') + 1));
+  }
+
+  function renameProblem(entry, name) {
+    const value = name.trim();
+    if (!value) return 'Enter a name';
+    if (/[\\/]/.test(value) || value === '.' || value === '..') return 'Names cannot contain slashes';
+    // A compacted folder ("a/b/c") hides its siblings, so only the extension can check those.
+    if (!entry.node.label.includes('/') && entry.siblings.some((n) => n !== entry.node && n.label === value)) {
+      return 'That name already exists';
+    }
+    return null;
+  }
+
+  function renderRename() {
+    const entry = rows.get(pending.uri);
+    if (!entry) { pending = null; return; }
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'rename-input';
+    input.spellcheck = false;
+    input.setAttribute('aria-label', 'New name');
+    input.value = pending.value;
+    entry.label.replaceWith(input);
+
+    const error = document.createElement('div');
+    error.className = 'create-error';
+    error.setAttribute('role', 'alert');
+    error.hidden = !pending.error;
+    error.textContent = pending.error || '';
+    error.style.marginLeft = entry.el.style.paddingLeft;
+    entry.el.after(error);
+    pending.input = input;
+
+    const showProblem = (message) => {
+      error.hidden = !message;
+      error.textContent = message || '';
+      input.classList.toggle('invalid', !!message);
+    };
+    if (pending.error) input.classList.add('invalid');
+
+    input.addEventListener('click', (e) => e.stopPropagation());
+    input.addEventListener('input', () => {
+      pending.value = input.value;
+      pending.caret = input.selectionStart;
+      pending.error = '';
+      showProblem('');
+    });
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Escape') { e.preventDefault(); cancelCreate(); return; }
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (pending.submitting) return;
+      if (pending.value.trim() === pending.original) { cancelCreate(); return; }
+      const problem = renameProblem(entry, pending.value);
+      pending.error = problem || '';
+      showProblem(problem);
+      if (problem) return;
+      pending.submitting = true;
+      vscode.postMessage({ type: 'rename', uri: pending.uri, name: pending.value.trim() });
+    });
+    input.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (pending && pending.input === input && !pending.submitting && document.activeElement !== input) cancelCreate();
+      }, 0);
+    });
+
+    input.focus();
+    if (pending.caret == null) {
+      // Like the Explorer: select the name without its extension.
+      const dot = pending.value.lastIndexOf('.');
+      input.setSelectionRange(0, !entry.node.isDir && dot > 0 ? dot : pending.value.length);
+    } else {
+      input.setSelectionRange(pending.caret, pending.caret);
+    }
+  }
+
+  function startRename(uri) {
+    if (!model || !rows.get(uri)) return;
+    const name = baseName(uri);
+    pending = { mode: 'rename', uri, original: name, value: name, caret: null, error: '', submitting: false, input: null };
+    render();
+  }
+
   function startCreate(kind, uri) {
     const target = model && groups.get(uri);
     if (!target) {
@@ -367,7 +468,7 @@
       return;
     }
     if (target.node) { collapsed.delete(target.node.key); persist(); }
-    pending = { kind, uri, value: '', caret: 0, error: '', submitting: false, input: null };
+    pending = { mode: 'create', kind, uri, value: '', caret: 0, error: '', submitting: false, input: null };
     render();
   }
 
@@ -394,6 +495,7 @@
     const tree = $('tree');
     tree.replaceChildren();
     groups.clear();
+    rows.clear();
     if (model.rootUri) groups.set(model.rootUri, { group: tree, node: null, depth: 0 });
     if (model.tree.length === 0) {
       message.hidden = false;
@@ -414,7 +516,9 @@
       render();
     } else if (data.type === 'startCreate') {
       startCreate(data.kind, data.uri);
-    } else if (data.type === 'createResult' && pending) {
+    } else if (data.type === 'startRename') {
+      startRename(data.uri);
+    } else if ((data.type === 'createResult' || data.type === 'renameResult') && pending) {
       if (data.error) {
         pending.submitting = false;
         pending.error = data.error;

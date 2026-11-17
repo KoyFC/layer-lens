@@ -104,6 +104,16 @@
         "command": "layerLens.soloLayer",
         "title": "Show only this layer",
         "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.rename",
+        "title": "Rename",
+        "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.delete",
+        "title": "Delete",
+        "category": "Layer Lens"
       }
     ],
     "menus": {
@@ -189,6 +199,16 @@
           "command": "layerLens.copyRelativePath",
           "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file)$/",
           "group": "2_files@2"
+        },
+        {
+          "command": "layerLens.rename",
+          "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file)$/ && !workspaceRoot",
+          "group": "3_modify@1"
+        },
+        {
+          "command": "layerLens.delete",
+          "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file)$/ && !workspaceRoot",
+          "group": "3_modify@2"
         }
       ],
       "commandPalette": [
@@ -202,6 +222,14 @@
         },
         {
           "command": "layerLens.soloLayer",
+          "when": "false"
+        },
+        {
+          "command": "layerLens.rename",
+          "when": "false"
+        },
+        {
+          "command": "layerLens.delete",
           "when": "false"
         }
       ]

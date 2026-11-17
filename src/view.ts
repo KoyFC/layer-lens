@@ -21,6 +21,8 @@ const COMMANDS = new Set([
   'layerLens.invertLayers',
   'layerLens.reveal',
   'layerLens.copyRelativePath',
+  'layerLens.rename',
+  'layerLens.delete',
   'layerLens.rescan',
 ]);
 
@@ -69,6 +71,14 @@ export class LayerLensView implements vscode.WebviewViewProvider {
     if (!this.view) return false;
     this.view.show(false); // reveal the view and give it focus so the field can be typed in
     void this.view.webview.postMessage({ type: 'startCreate', kind, uri: parent.toString() });
+    return true;
+  }
+
+  /** Asks the page to edit the name of a row in place. Returns false when the view is not available. */
+  startInlineRename(uri: vscode.Uri): boolean {
+    if (!this.view) return false;
+    this.view.show(false);
+    void this.view.webview.postMessage({ type: 'startRename', uri: uri.toString() });
     return true;
   }
 
@@ -148,6 +158,11 @@ export class LayerLensView implements vscode.WebviewViewProvider {
           msg.name,
         );
         void this.view?.webview.postMessage({ type: 'createResult', error });
+        return;
+      }
+      case 'rename': {
+        const error = await vscode.commands.executeCommand<string | undefined>('layerLens.renameTo', msg.uri, msg.name);
+        void this.view?.webview.postMessage({ type: 'renameResult', error });
         return;
       }
       case 'createFallback':
