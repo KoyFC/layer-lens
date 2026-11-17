@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import { detectLayers } from './detect';
+import { pickColor, swatch } from './colorPicker';
 import { pickLayers } from './layerPicker';
 import { FilterState, autoDetectEnabled, excludedNames, seedLayers, unique } from './state';
-import { LayerLensView } from './view';
+import { LayerLensView, defaultColor } from './view';
 
 export function activate(context: vscode.ExtensionContext): void {
   const state = new FilterState(context.workspaceState);
@@ -72,6 +73,26 @@ export function activate(context: vscode.ExtensionContext): void {
     );
     if (!picked) return;
     state.setLayers(picked);
+    view.rerender();
+  });
+
+  reg('layerLens.editColor', async (layer?: string) => {
+    const layers = state.layers();
+    const colorOf = (name: string) => state.customColor(name) ?? defaultColor(name, layers.indexOf(name));
+
+    let name = typeof layer === 'string' ? layer.toLowerCase() : undefined;
+    if (!name || !layers.includes(name)) {
+      const choice = await vscode.window.showQuickPick(
+        layers.map((l) => ({ label: l, description: colorOf(l), iconPath: swatch(colorOf(l)) })),
+        { title: 'Layer Lens: change a layer color', placeHolder: 'Choose a layer' },
+      );
+      if (!choice) return;
+      name = choice.label;
+    }
+
+    const picked = await pickColor(name, state.customColor(name), defaultColor(name, layers.indexOf(name)));
+    if (picked === undefined) return;
+    state.setColor(name, picked ?? undefined);
     view.rerender();
   });
 

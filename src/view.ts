@@ -14,10 +14,11 @@ const COMMANDS = new Set([
   'layerLens.newFile',
   'layerLens.newFolder',
   'layerLens.editLayers',
+  'layerLens.editColor',
   'layerLens.rescan',
 ]);
 
-export function layerColor(layer: string, index: number): string {
+export function defaultColor(layer: string, index: number): string {
   return LAYER_COLORS[layer] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length];
 }
 
@@ -77,7 +78,7 @@ export class LayerLensView implements vscode.WebviewViewProvider {
     if (!this.view) return;
     const layers = this.state.layers().map((name, i) => ({
       name,
-      color: layerColor(name, i),
+      color: this.state.customColor(name) ?? defaultColor(name, i),
       active: this.state.isActive(name),
     }));
     if (!this.themeLoaded) {
@@ -115,7 +116,7 @@ export class LayerLensView implements vscode.WebviewViewProvider {
         return this.post();
       case 'command':
         // Only the view's own commands can be triggered from the page.
-        if (COMMANDS.has(String(msg.id))) await vscode.commands.executeCommand(String(msg.id), msg.uri);
+        if (COMMANDS.has(String(msg.id))) await vscode.commands.executeCommand(String(msg.id), msg.layer ?? msg.uri);
         return;
       case 'open':
       case 'reveal':

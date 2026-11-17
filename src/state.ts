@@ -4,6 +4,7 @@ const ACTIVE_KEY = 'layerLens.activeLayers';
 const OTHERS_KEY = 'layerLens.showOthers';
 const FLATTEN_KEY = 'layerLens.flatten';
 const LAYERS_KEY = 'layerLens.layerList';
+const COLORS_KEY = 'layerLens.colors';
 
 const DEFAULT_LAYERS = ['application', 'domain', 'infrastructure'];
 
@@ -29,6 +30,7 @@ export function excludedNames(): Set<string> {
 export class FilterState {
   private list: string[] | undefined;
   private active: Set<string>;
+  private colors: Record<string, string>;
   showOthers: boolean;
   flatten: boolean;
   /** Names found by the last scan with how many places repeat them (not persisted). */
@@ -36,6 +38,7 @@ export class FilterState {
 
   constructor(private readonly memento: vscode.Memento) {
     this.list = memento.get<string[]>(LAYERS_KEY);
+    this.colors = memento.get<Record<string, string>>(COLORS_KEY, {});
     const stored = memento.get<string[]>(ACTIVE_KEY);
     this.active = new Set((stored ?? this.layers()).map((l) => l.toLowerCase()));
     this.showOthers = memento.get<boolean>(OTHERS_KEY, false);
@@ -61,6 +64,20 @@ export class FilterState {
     for (const l of next) if (!previous.has(l)) this.active.add(l);
     for (const l of [...this.active]) if (!next.includes(l)) this.active.delete(l);
     this.list = next;
+    this.persist();
+  }
+
+  /** The color picked by hand for a layer, if any. */
+  customColor(layer: string): string | undefined {
+    return this.colors[layer.toLowerCase()];
+  }
+
+  /** Sets a color, or goes back to the default when `hex` is undefined. */
+  setColor(layer: string, hex: string | undefined): void {
+    const next = { ...this.colors };
+    if (hex) next[layer.toLowerCase()] = hex;
+    else delete next[layer.toLowerCase()];
+    this.colors = next;
     this.persist();
   }
 
@@ -105,6 +122,7 @@ export class FilterState {
 
   private persist(): void {
     void this.memento.update(LAYERS_KEY, this.list);
+    void this.memento.update(COLORS_KEY, this.colors);
     void this.memento.update(ACTIVE_KEY, [...this.active]);
     void this.memento.update(OTHERS_KEY, this.showOthers);
     void this.memento.update(FLATTEN_KEY, this.flatten);

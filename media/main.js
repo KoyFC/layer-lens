@@ -60,6 +60,16 @@
     return b;
   }
 
+  function layerChip(l) {
+    const b = chip(l.name, l.active, () => vscode.postMessage({ type: 'toggleLayer', layer: l.name }), l.color, false);
+    b.title = 'Click to show or hide. Right-click to change the color.';
+    b.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      vscode.postMessage({ type: 'command', id: 'layerLens.editColor', layer: l.name });
+    });
+    return b;
+  }
+
   function actionButton(content, title, type, uri, command) {
     const b = document.createElement('button');
     if (content.startsWith('<')) b.innerHTML = content; else b.textContent = content;
@@ -158,13 +168,14 @@
     const chips = $('chips');
     chips.replaceChildren(
       ...model.layers.map((l) =>
-        chip(l.name, l.active, () => vscode.postMessage({ type: 'toggleLayer', layer: l.name }), l.color, false),
+        layerChip(l),
       ),
     );
 
     $('options').replaceChildren(
       chip('Other folders', model.showOthers, () => vscode.postMessage({ type: 'toggleOthers' }), null, true),
       chip('Flatten layer', model.flatten, () => vscode.postMessage({ type: 'toggleFlatten' }), null, true),
+      chip('Colors', null, () => vscode.postMessage({ type: 'command', id: 'layerLens.editColor' }), null, true),
       chip('Edit layers', null, () => vscode.postMessage({ type: 'command', id: 'layerLens.editLayers' }), null, true),
       chip('Rescan', null, () => vscode.postMessage({ type: 'command', id: 'layerLens.rescan' }), null, true),
     );

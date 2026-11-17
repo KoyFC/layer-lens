@@ -63,6 +63,10 @@
         "title": "Layer Lens: edit layers…"
       },
       {
+        "command": "layerLens.editColor",
+        "title": "Layer Lens: change layer color…"
+      },
+      {
         "command": "layerLens.rescan",
         "title": "Layer Lens: rescan layers"
       }
@@ -111,6 +115,11 @@
         },
         {
           "command": "layerLens.rescan",
+          "when": "view == layerLens.tree",
+          "group": "2_layers@4"
+        },
+        {
+          "command": "layerLens.editColor",
           "when": "view == layerLens.tree",
           "group": "2_layers@3"
         }
