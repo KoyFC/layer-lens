@@ -136,3 +136,27 @@ body {
 }
 .ctx-hint { opacity: 0.7; }
 .ctx-sep { height: 1px; margin: 4px 0; background: var(--vscode-menu-separatorBackground, var(--vscode-widget-border)); }
+
+.row.creating { cursor: default; }
+.row.creating:hover { background: transparent; }
+.row.creating input {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  padding: 0 4px;
+  font: inherit;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-focusBorder);
+  outline: none;
+}
+.row.creating input.invalid { border-color: var(--vscode-inputValidation-errorBorder); }
+.create-error {
+  margin-right: 6px;
+  padding: 3px 6px;
+  font-size: 0.9em;
+  color: var(--vscode-inputValidation-errorForeground, var(--vscode-foreground));
+  background: var(--vscode-inputValidation-errorBackground);
+  border: 1px solid var(--vscode-inputValidation-errorBorder);
+  border-top: none;
+}

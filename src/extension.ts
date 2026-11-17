@@ -176,23 +176,20 @@ export function activate(context: vscode.ExtensionContext): void {
     return (await vscode.window.showWorkspaceFolderPick())?.uri;
   };
 
-  const create = async (kind: 'file' | 'folder', target?: string): Promise<void> => {
-    const parent = await resolveParent(target);
-    if (!parent) return;
-    const where = vscode.workspace.asRelativePath(parent, false);
+  /** Why `value` cannot be created in `parent`, or undefined when it can. */
+  const validateName = async (parent: vscode.Uri, value: string): Promise<string | undefined> => {
+    const trimmed = value.trim();
+    if (!trimmed) return 'Enter a name';
+    if (trimmed.includes('\\') || trimmed.startsWith('/')) return 'Use a relative path with /';
+    const segments = trimmed.replace(/\/+$/, '').split('/');
+    if (segments.some((s) => !s || s === '.' || s === '..')) return 'Invalid path segment';
+    return (await exists(vscode.Uri.joinPath(parent, ...segments))) ? 'That name already exists' : undefined;
+  };
 
-    const name = await vscode.window.showInputBox({
-      title: kind === 'file' ? 'New file' : 'New folder',
-      prompt: `Created in ${where === parent.fsPath || !where ? 'the workspace root' : where}. Use / for nested folders.`,
-      validateInput: async (v) => {
-        const segments = v.trim().replace(/\/+$/, '').split('/');
-        if (!v.trim()) return 'Enter a name';
-        if (v.includes('\\') || v.startsWith('/')) return 'Use a relative path with /';
-        if (segments.some((s) => !s || s === '.' || s === '..')) return 'Invalid path segment';
-        return (await exists(vscode.Uri.joinPath(parent, ...segments))) ? 'That name already exists' : undefined;
-      },
-    });
-    if (!name) return;
+  /** Creates the file or folder. Resolves with an error message, or undefined on success. */
+  const createAt = async (kind: 'file' | 'folder', parent: vscode.Uri, name: string): Promise<string | undefined> => {
+    const problem = await validateName(parent, name);
+    if (problem) return problem;
 
     const segments = name.trim().replace(/\/+$/, '').split('/');
     const uri = vscode.Uri.joinPath(parent, ...segments);
@@ -204,8 +201,7 @@ export function activate(context: vscode.ExtensionContext): void {
         await vscode.workspace.fs.writeFile(uri, new Uint8Array());
       }
     } catch (err) {
-      void vscode.window.showErrorMessage(`Layer Lens: could not create ${name}: ${(err as Error).message}`);
-      return;
+      return `Could not create it: ${(err as Error).message}`;
     }
 
     view.refresh();
@@ -217,7 +213,42 @@ export function activate(context: vscode.ExtensionContext): void {
         `Layer Lens: created ${name}, but the current filters hide it. Enable its layer or "Other folders" to see it.`,
       );
     }
+    return undefined;
   };
+
+  /** The fallback when the name cannot be typed in the tree: an input box at the top of the window. */
+  const createWithPopup = async (kind: 'file' | 'folder', parent: vscode.Uri): Promise<void> => {
+    const where = vscode.workspace.asRelativePath(parent, false);
+    const name = await vscode.window.showInputBox({
+      title: kind === 'file' ? 'New file' : 'New folder',
+      prompt: `Created in ${where === parent.fsPath || !where ? 'the workspace root' : where}. Use / for nested folders.`,
+      validateInput: (v) => validateName(parent, v),
+    });
+    if (!name) return;
+    const error = await createAt(kind, parent, name);
+    if (error) void vscode.window.showErrorMessage(`Layer Lens: ${error}`);
+  };
+
+  const create = async (kind: 'file' | 'folder', target?: string): Promise<void> => {
+    const parent = await resolveParent(target);
+    if (!parent) return;
+    // Like the Explorer, ask for the name in the tree itself when it is showing.
+    if (view.startInlineCreate(kind, parent)) return;
+    await createWithPopup(kind, parent);
+  };
+
+  // Called by the page: it types the name in the tree and asks for it to be created.
+  reg('layerLens.createNamed', (kind?: unknown, uri?: unknown, name?: unknown) => {
+    if ((kind !== 'file' && kind !== 'folder') || typeof uri !== 'string' || typeof name !== 'string') return 'Invalid request';
+    const parent = vscode.Uri.parse(uri);
+    if (!vscode.workspace.getWorkspaceFolder(parent)) return 'Outside the workspace';
+    return createAt(kind, parent, name);
+  });
+  reg('layerLens.createWithPopup', (kind?: unknown, uri?: unknown) => {
+    if ((kind !== 'file' && kind !== 'folder') || typeof uri !== 'string') return;
+    const parent = vscode.Uri.parse(uri);
+    if (vscode.workspace.getWorkspaceFolder(parent)) return createWithPopup(kind, parent);
+  });
 
   reg('layerLens.newFile', (arg?: unknown) => create('file', argOf(arg, 'uri')));
   reg('layerLens.newFolder', (arg?: unknown) => create('folder', argOf(arg, 'uri')));

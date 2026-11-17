@@ -61,6 +61,17 @@ export class LayerLensView implements vscode.WebviewViewProvider {
     void this.post();
   }
 
+  /**
+   * Asks the page to show a name field inside the tree. Returns false when the view is not
+   * available, so the caller can fall back to an input box.
+   */
+  startInlineCreate(kind: 'file' | 'folder', parent: vscode.Uri): boolean {
+    if (!this.view) return false;
+    this.view.show(false); // reveal the view and give it focus so the field can be typed in
+    void this.view.webview.postMessage({ type: 'startCreate', kind, uri: parent.toString() });
+    return true;
+  }
+
   /** Call when the icon theme, the color theme or the installed extensions change. */
   themeChanged(): void {
     this.themeLoaded = false;
@@ -101,6 +112,7 @@ export class LayerLensView implements vscode.WebviewViewProvider {
       showOthers: this.state.showOthers,
       flatten: this.state.flatten,
       tree,
+      rootUri: (vscode.workspace.workspaceFolders ?? []).length === 1 ? vscode.workspace.workspaceFolders![0].uri.toString() : undefined,
       icons,
       truncated: this.model.truncated,
       colors: Object.fromEntries(layers.map((l) => [l.name, l.color])),
@@ -127,6 +139,20 @@ export class LayerLensView implements vscode.WebviewViewProvider {
       case 'command':
         // Only the view's own commands can be triggered from the page.
         if (COMMANDS.has(String(msg.id))) await vscode.commands.executeCommand(String(msg.id), msg.layer ?? msg.uri);
+        return;
+      case 'create': {
+        const error = await vscode.commands.executeCommand<string | undefined>(
+          'layerLens.createNamed',
+          msg.kind,
+          msg.uri,
+          msg.name,
+        );
+        void this.view?.webview.postMessage({ type: 'createResult', error });
+        return;
+      }
+      case 'createFallback':
+        // The folder is not showing in the tree (hidden by the filters), so ask in the input box instead.
+        await vscode.commands.executeCommand('layerLens.createWithPopup', msg.kind, msg.uri);
         return;
       case 'open': {
         const uri = vscode.Uri.parse(String(msg.uri));

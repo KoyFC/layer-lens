@@ -3,6 +3,10 @@
   const saved = vscode.getState() || { collapsed: [] };
   const collapsed = new Set(saved.collapsed);
   let model = null;
+  /** Folders drawn in the tree: uri -> { group, node }. Rebuilt on every render. */
+  const groups = new Map();
+  /** The name field being typed, if any: { kind, uri, value, caret, error, submitting, input }. */
+  let pending = null;
   const loadedFonts = new Set();
 
   const $ = (id) => document.getElementById(id);
@@ -235,6 +239,7 @@
       const group = document.createElement('div');
       group.setAttribute('role', 'group');
       parent.appendChild(group);
+      groups.set(node.uri, { group, node, depth: depth + 1 });
       renderNodes(node.children || [], depth + 1, group);
 
       const apply = () => {
@@ -255,6 +260,115 @@
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
       });
     }
+  }
+
+  // ---- name field inside the tree (new file / new folder) ----------------
+
+  function cancelCreate() {
+    if (!pending) return;
+    pending = null;
+    render();
+  }
+
+  /** The name is checked by the extension too; this only gives instant feedback. */
+  function localProblem(target, name) {
+    const trimmed = name.trim();
+    if (!trimmed) return 'Enter a name';
+    if (trimmed.includes('\\') || trimmed.startsWith('/')) return 'Use a relative path with /';
+    const first = trimmed.replace(/\/+$/, '').split('/')[0];
+    if (first === '.' || first === '..') return 'Invalid path segment';
+    const siblings = target.node ? target.node.children || [] : model.tree;
+    if (siblings.some((n) => n.label === first)) return 'That name already exists';
+    return null;
+  }
+
+  function showError(wrap, message) {
+    const box = wrap.querySelector('.create-error');
+    box.hidden = !message;
+    box.textContent = message || '';
+    wrap.querySelector('input').classList.toggle('invalid', !!message);
+  }
+
+  function submitCreate(wrap, target) {
+    if (!pending || pending.submitting) return;
+    const problem = localProblem(target, pending.value);
+    pending.error = problem || '';
+    showError(wrap, problem);
+    if (problem) return;
+    pending.submitting = true;
+    vscode.postMessage({ type: 'create', kind: pending.kind, uri: pending.uri, name: pending.value.trim() });
+  }
+
+  function renderPending() {
+    // While the extension is creating it the field stays gone: success refreshes the tree under it.
+    if (!pending || pending.submitting) return;
+    const target = groups.get(pending.uri);
+    if (!target) { pending = null; return; }
+
+    const wrap = document.createElement('div');
+    const row = document.createElement('div');
+    row.className = 'row creating';
+    row.style.paddingLeft = 6 + target.depth * 14 + 'px';
+    const spacer = document.createElement('span');
+    spacer.className = 'twisty';
+    row.appendChild(spacer);
+    const icon = document.createElement('span');
+    icon.className = 'icon';
+    icon.innerHTML = pending.kind === 'folder' ? FOLDER : FILE;
+    row.appendChild(icon);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.spellcheck = false;
+    input.placeholder = pending.kind === 'folder' ? 'Folder name' : 'File name';
+    input.setAttribute('aria-label', input.placeholder);
+    input.value = pending.value;
+    row.appendChild(input);
+
+    const error = document.createElement('div');
+    error.className = 'create-error';
+    error.setAttribute('role', 'alert');
+    error.hidden = true;
+    error.style.marginLeft = 6 + target.depth * 14 + 38 + 'px';
+
+    wrap.append(row, error);
+    target.group.prepend(wrap);
+    pending.input = input;
+    if (pending.error) showError(wrap, pending.error);
+
+    input.addEventListener('input', () => {
+      pending.value = input.value;
+      pending.caret = input.selectionStart;
+      pending.error = '';
+      showError(wrap, '');
+    });
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') { e.preventDefault(); submitCreate(wrap, target); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancelCreate(); }
+    });
+    input.addEventListener('blur', () => {
+      // A re-render replaces the field, which also blurs it; only cancel if this one is still current.
+      setTimeout(() => {
+        if (pending && pending.input === input && !pending.submitting && document.activeElement !== input) cancelCreate();
+      }, 0);
+    });
+
+    input.focus();
+    const caret = pending.caret == null ? input.value.length : pending.caret;
+    input.setSelectionRange(caret, caret);
+    wrap.scrollIntoView({ block: 'nearest' });
+  }
+
+  function startCreate(kind, uri) {
+    const target = model && groups.get(uri);
+    if (!target) {
+      vscode.postMessage({ type: 'createFallback', kind, uri });
+      return;
+    }
+    if (target.node) { collapsed.delete(target.node.key); persist(); }
+    pending = { kind, uri, value: '', caret: 0, error: '', submitting: false, input: null };
+    render();
   }
 
   function render() {
@@ -279,6 +393,8 @@
     const message = $('message');
     const tree = $('tree');
     tree.replaceChildren();
+    groups.clear();
+    if (model.rootUri) groups.set(model.rootUri, { group: tree, node: null, depth: 0 });
     if (model.tree.length === 0) {
       message.hidden = false;
       message.textContent = 'No folders match the active layers. Enable a layer above.';
@@ -287,12 +403,26 @@
       message.textContent = model.truncated ? 'Tree truncated: too many entries to display.' : '';
       renderNodes(model.tree, 0, tree);
     }
+    renderPending();
   }
 
   window.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'model') {
-      model = event.data;
+    const data = event.data;
+    if (!data) return;
+    if (data.type === 'model') {
+      model = data;
       render();
+    } else if (data.type === 'startCreate') {
+      startCreate(data.kind, data.uri);
+    } else if (data.type === 'createResult' && pending) {
+      if (data.error) {
+        pending.submitting = false;
+        pending.error = data.error;
+        render(); // draws the field again with the message
+      } else {
+        pending = null;
+        render();
+      }
     }
   });
 
