@@ -69,13 +69,94 @@
       false,
     );
     b.title = 'Click: show or hide. Shift or Ctrl+click: show only this one. Right-click: more.';
-    b.dataset.vscodeContext = JSON.stringify({
-      webviewSection: 'layer',
-      layer: l.name,
-      preventDefaultContextMenuItems: true,
-    });
+    b.dataset.layer = l.name;
     return b;
   }
+
+  // ---- context menu for the layer filters -------------------------------
+  // Drawn by the page because its labels depend on the layer (name and shortcut), which
+  // contributed VS Code menus cannot do.
+
+  let menuEl = null;
+
+  function closeMenu() {
+    if (menuEl) { menuEl.remove(); menuEl = null; }
+  }
+
+  function openMenu(x, y, items) {
+    closeMenu();
+    const menu = document.createElement('div');
+    menu.className = 'ctx-menu';
+    menu.setAttribute('role', 'menu');
+
+    for (const item of items) {
+      if (item === '-') {
+        const sep = document.createElement('div');
+        sep.className = 'ctx-sep';
+        sep.setAttribute('role', 'separator');
+        menu.appendChild(sep);
+        continue;
+      }
+      const b = document.createElement('button');
+      b.className = 'ctx-item';
+      b.setAttribute('role', 'menuitem');
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      b.appendChild(label);
+      if (item.hint) {
+        const hint = document.createElement('span');
+        hint.className = 'ctx-hint';
+        hint.textContent = item.hint;
+        b.appendChild(hint);
+      }
+      b.addEventListener('click', () => { closeMenu(); item.run(); });
+      menu.appendChild(b);
+    }
+
+    menu.addEventListener('keydown', (e) => {
+      const buttons = [...menu.querySelectorAll('.ctx-item')];
+      const i = buttons.indexOf(document.activeElement);
+      if (e.key === 'Escape') { closeMenu(); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); buttons[(i + 1) % buttons.length].focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); buttons[(i - 1 + buttons.length) % buttons.length].focus(); }
+    });
+
+    document.body.appendChild(menu);
+    const r = menu.getBoundingClientRect();
+    menu.style.left = Math.max(2, Math.min(x, window.innerWidth - r.width - 2)) + 'px';
+    menu.style.top = Math.max(2, Math.min(y, window.innerHeight - r.height - 2)) + 'px';
+    menuEl = menu;
+    menu.querySelector('.ctx-item').focus();
+  }
+
+  function layerMenu(layer) {
+    const run = (id, extra) => () => vscode.postMessage({ type: 'command', id, ...extra });
+    const items = [];
+    if (layer) {
+      items.push(
+        { label: 'Show only this layer (' + layer + ')', hint: 'Shift+click', run: run('layerLens.soloLayer', { layer }) },
+        { label: 'Change layer color…', run: run('layerLens.editColor', { layer }) },
+        '-',
+      );
+    }
+    items.push(
+      { label: 'Show all layers', run: run('layerLens.showAll') },
+      { label: 'Hide all layers', run: run('layerLens.hideAll') },
+      { label: 'Invert layer filters', run: run('layerLens.invertLayers') },
+    );
+    return items;
+  }
+
+  for (const id of ['chips', 'bulk']) {
+    $(id).addEventListener('contextmenu', (e) => {
+      e.preventDefault(); // also stops VS Code from showing its own menu
+      const chip = e.target.closest('.chip[data-layer]');
+      openMenu(e.clientX, e.clientY, layerMenu(chip ? chip.dataset.layer : null));
+    });
+  }
+  document.addEventListener('mousedown', (e) => { if (menuEl && !menuEl.contains(e.target)) closeMenu(); });
+  window.addEventListener('blur', closeMenu);
+  window.addEventListener('resize', closeMenu);
 
   function actionButton(content, title, type, uri, command) {
     const b = document.createElement('button');
@@ -180,9 +261,11 @@
     loadFonts(model.icons.fonts);
     const chips = $('chips');
     const allOn = model.layers.length > 0 && model.layers.every((l) => l.active);
-    chips.replaceChildren(
-      ...model.layers.map(layerChip),
+    chips.replaceChildren(...model.layers.map(layerChip));
+
+    $('bulk').replaceChildren(
       chip(allOn ? 'Hide all' : 'Show all', null, () => vscode.postMessage({ type: 'toggleAll' }), null, true),
+      chip('Invert', null, () => vscode.postMessage({ type: 'command', id: 'layerLens.invertLayers' }), null, true),
     );
 
     $('options').replaceChildren(

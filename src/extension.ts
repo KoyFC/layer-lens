@@ -119,6 +119,14 @@ export function activate(context: vscode.ExtensionContext): void {
     state.solo(layer);
     view.rerender();
   });
+  reg('layerLens.hideAll', () => {
+    state.setAll([]);
+    view.rerender();
+  });
+  reg('layerLens.invertLayers', () => {
+    state.invert();
+    view.rerender();
+  });
   reg('layerLens.showAll', () => {
     state.setAll(state.layers());
     view.rerender();

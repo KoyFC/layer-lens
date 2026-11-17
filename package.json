@@ -38,6 +38,16 @@
         "category": "Layer Lens"
       },
       {
+        "command": "layerLens.hideAll",
+        "title": "Hide all layers",
+        "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.invertLayers",
+        "title": "Invert layer filters",
+        "category": "Layer Lens"
+      },
+      {
         "command": "layerLens.toggleOthers",
         "title": "Toggle other folders and files",
         "category": "Layer Lens"
@@ -111,7 +121,7 @@
         {
           "command": "layerLens.showAll",
           "when": "view == layerLens.tree",
-          "group": "1_filter@1"
+          "group": "1_filter@0"
         },
         {
           "command": "layerLens.toggleOthers",
@@ -147,6 +157,16 @@
           "command": "layerLens.editColor",
           "when": "view == layerLens.tree",
           "group": "2_layers@3"
+        },
+        {
+          "command": "layerLens.hideAll",
+          "when": "view == layerLens.tree",
+          "group": "1_filter@0"
+        },
+        {
+          "command": "layerLens.invertLayers",
+          "when": "view == layerLens.tree",
+          "group": "1_filter@0"
         }
       ],
       "webview/context": [
@@ -169,16 +189,6 @@
           "command": "layerLens.copyRelativePath",
           "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file)$/",
           "group": "2_files@2"
-        },
-        {
-          "command": "layerLens.soloLayer",
-          "when": "webviewId == 'layerLens.tree' && webviewSection == layer",
-          "group": "1_layer@0"
-        },
-        {
-          "command": "layerLens.editColor",
-          "when": "webviewId == 'layerLens.tree' && webviewSection == layer",
-          "group": "1_layer@1"
         }
       ],
       "commandPalette": [

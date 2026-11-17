@@ -10,7 +10,8 @@ body {
   gap: 6px;
   padding: 8px 10px 4px;
 }
-.chips.options { padding-top: 0; padding-bottom: 8px; }
+.chips.bulk, .chips.options { padding-top: 0; }
+.chips.options { padding-bottom: 8px; }
 
 .chip {
   --c: var(--vscode-focusBorder);
@@ -102,3 +103,36 @@ body {
 .actions button svg { width: 14px; height: 14px; fill: currentColor; display: block; }
 .actions button:hover { background: var(--vscode-toolbar-hoverBackground); opacity: 1; }
 .actions button:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
+
+.ctx-menu {
+  position: fixed;
+  z-index: 10;
+  min-width: 180px;
+  padding: 4px 0;
+  background: var(--vscode-menu-background, var(--vscode-editorWidget-background));
+  color: var(--vscode-menu-foreground, var(--vscode-foreground));
+  border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, transparent));
+  border-radius: 5px;
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+}
+.ctx-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  padding: 3px 18px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ctx-item:hover, .ctx-item:focus {
+  outline: none;
+  background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground));
+  color: var(--vscode-menu-selectionForeground, inherit);
+}
+.ctx-hint { opacity: 0.7; }
+.ctx-sep { height: 1px; margin: 4px 0; background: var(--vscode-menu-separatorBackground, var(--vscode-widget-border)); }

@@ -107,6 +107,11 @@ export class FilterState {
     this.setAll(already ? this.layers() : [layer]);
   }
 
+  /** Shows the hidden layers and hides the visible ones. */
+  invert(): void {
+    this.setAll(this.layers().filter((l) => !this.isActive(l)));
+  }
+
   /** Hides every layer when all are visible, otherwise shows them all. */
   toggleAll(): void {
     this.setAll(this.activeLayers().length === this.layers().length ? [] : this.layers());

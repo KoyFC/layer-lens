@@ -16,6 +16,9 @@ const COMMANDS = new Set([
   'layerLens.editLayers',
   'layerLens.editColor',
   'layerLens.soloLayer',
+  'layerLens.showAll',
+  'layerLens.hideAll',
+  'layerLens.invertLayers',
   'layerLens.reveal',
   'layerLens.copyRelativePath',
   'layerLens.rescan',
@@ -148,6 +151,7 @@ export class LayerLensView implements vscode.WebviewViewProvider {
 </head>
 <body>
 <div class="chips" id="chips" role="group" aria-label="Layer filters"></div>
+<div class="chips bulk" id="bulk" role="group" aria-label="All layers"></div>
 <div class="chips options" id="options" role="group" aria-label="View options"></div>
 <div class="message" id="message" hidden></div>
 <div class="tree" id="tree" role="tree"></div>
