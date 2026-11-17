@@ -1,0 +1,5 @@
+{
+  // Debugging the extension host crashes VS Code 1.146 (SIGABRT in Node's inspector, on the
+  // Network.enable call the debugger sends for its network view), so keep that view off.
+  "debug.javascript.enableNetworkView": false
+}
