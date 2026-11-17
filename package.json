@@ -152,32 +152,32 @@
       "webview/context": [
         {
           "command": "layerLens.newFile",
-          "when": "webview == layerLens.tree && webviewSection =~ /^(dir|file|root)$/",
+          "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file|root)$/",
           "group": "1_create@1"
         },
         {
           "command": "layerLens.newFolder",
-          "when": "webview == layerLens.tree && webviewSection =~ /^(dir|file|root)$/",
+          "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file|root)$/",
           "group": "1_create@2"
         },
         {
           "command": "layerLens.reveal",
-          "when": "webview == layerLens.tree && webviewSection =~ /^(dir|file)$/",
+          "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file)$/",
           "group": "2_files@1"
         },
         {
           "command": "layerLens.copyRelativePath",
-          "when": "webview == layerLens.tree && webviewSection =~ /^(dir|file)$/",
+          "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file)$/",
           "group": "2_files@2"
         },
         {
           "command": "layerLens.soloLayer",
-          "when": "webview == layerLens.tree && webviewSection == layer",
+          "when": "webviewId == 'layerLens.tree' && webviewSection == layer",
           "group": "1_layer@0"
         },
         {
           "command": "layerLens.editColor",
-          "when": "webview == layerLens.tree && webviewSection == layer",
+          "when": "webviewId == 'layerLens.tree' && webviewSection == layer",
           "group": "1_layer@1"
         }
       ],
