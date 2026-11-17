@@ -97,5 +97,6 @@ body {
   border-radius: 3px;
   opacity: 0.8;
 }
+.actions button svg { width: 14px; height: 14px; fill: currentColor; display: block; }
 .actions button:hover { background: var(--vscode-toolbar-hoverBackground); opacity: 1; }
 .actions button:focus-visible { outline: 1px solid var(--vscode-focusBorder); }

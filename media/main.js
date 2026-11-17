@@ -9,6 +9,9 @@
   const FOLDER = '<svg viewBox="0 0 16 16"><path d="M1.5 3A1.5 1.5 0 0 1 3 1.5h3l1.5 1.5H13A1.5 1.5 0 0 1 14.5 4.5v7.5A1.5 1.5 0 0 1 13 13.5H3A1.5 1.5 0 0 1 1.5 12z"/></svg>';
   const FILE = '<svg viewBox="0 0 16 16"><path d="M3.5 1h5.6L13 4.9V14a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm5 1v3h3z"/></svg>';
 
+  const NEW_FILE = '<svg viewBox="0 0 16 16"><path d="M3.5 1h5.6L13 4.9V8h-1V6H8.5V2H4v12h4v1H3.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/><path d="M12 10h1v2h2v1h-2v2h-1v-2h-2v-1h2z"/></svg>';
+  const NEW_FOLDER = '<svg viewBox="0 0 16 16"><path d="M1.5 3A1.5 1.5 0 0 1 3 1.5h3l1.5 1.5H13A1.5 1.5 0 0 1 14.5 4.5V8h-1V4.5a.5.5 0 0 0-.5-.5H7.1L5.6 2.5H3a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h5v1H3A1.5 1.5 0 0 1 1.5 12z"/><path d="M12 10h1v2h2v1h-2v2h-1v-2h-2v-1h2z"/></svg>';
+
   function loadFonts(fonts) {
     for (const font of fonts) {
       const sources = font.sources.map((s) => 'url("' + s.url + '") format("' + s.format + '")').join(', ');
@@ -100,6 +103,10 @@
 
     const actions = document.createElement('span');
     actions.className = 'actions';
+    if (node.isDir) {
+      actions.appendChild(actionButton(NEW_FILE, 'New file', 'command', node.uri, 'layerLens.newFile'));
+      actions.appendChild(actionButton(NEW_FOLDER, 'New folder', 'command', node.uri, 'layerLens.newFolder'));
+    }
     actions.appendChild(actionButton('⌖', 'Reveal in Explorer', 'reveal', node.uri));
     actions.appendChild(actionButton('⧉', 'Copy relative path', 'copy', node.uri));
     el.appendChild(actions);

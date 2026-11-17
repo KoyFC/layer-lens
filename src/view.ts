@@ -11,6 +11,8 @@ const LAYER_COLORS: Record<string, string> = {
 const FALLBACK_COLORS = ['#a77bd9', '#e0607e', '#2ec4c4', '#c9b037', '#8c9bd6', '#d98a6c'];
 
 const COMMANDS = new Set([
+  'layerLens.newFile',
+  'layerLens.newFolder',
   'layerLens.addLayer',
   'layerLens.editLayers',
   'layerLens.rescan',

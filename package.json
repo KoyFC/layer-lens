@@ -49,6 +49,16 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "layerLens.newFile",
+        "title": "Layer Lens: new file",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "layerLens.newFolder",
+        "title": "Layer Lens: new folder",
+        "icon": "$(new-folder)"
+      },
+      {
         "command": "layerLens.addLayer",
         "title": "Layer Lens: add layer…"
       },
@@ -66,12 +76,12 @@
         {
           "command": "layerLens.pickLayers",
           "when": "view == layerLens.tree",
-          "group": "navigation@1"
+          "group": "navigation@3"
         },
         {
           "command": "layerLens.refresh",
           "when": "view == layerLens.tree",
-          "group": "navigation@2"
+          "group": "navigation@4"
         },
         {
           "command": "layerLens.showAll",
@@ -87,6 +97,16 @@
           "command": "layerLens.toggleFlatten",
           "when": "view == layerLens.tree",
           "group": "1_filter@3"
+        },
+        {
+          "command": "layerLens.newFile",
+          "when": "view == layerLens.tree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "layerLens.newFolder",
+          "when": "view == layerLens.tree",
+          "group": "navigation@2"
         },
         {
           "command": "layerLens.editLayers",
