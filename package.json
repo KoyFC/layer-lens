@@ -134,6 +134,36 @@
         "command": "layerLens.undo",
         "title": "Undo file operation",
         "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.pickContexts",
+        "title": "Pick contexts…",
+        "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.soloContext",
+        "title": "Show only this context",
+        "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.showAllContexts",
+        "title": "Show all contexts",
+        "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.hideAllContexts",
+        "title": "Hide all contexts",
+        "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.invertContexts",
+        "title": "Invert context filters",
+        "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.editContexts",
+        "title": "Edit contexts…",
+        "category": "Layer Lens"
       }
     ],
     "menus": {
@@ -197,6 +227,16 @@
           "command": "layerLens.invertLayers",
           "when": "view == layerLens.tree",
           "group": "1_filter@0"
+        },
+        {
+          "command": "layerLens.pickContexts",
+          "when": "view == layerLens.tree",
+          "group": "2_contexts@1"
+        },
+        {
+          "command": "layerLens.editContexts",
+          "when": "view == layerLens.tree",
+          "group": "2_contexts@2"
         }
       ],
       "webview/context": [
@@ -277,6 +317,10 @@
         },
         {
           "command": "layerLens.duplicate",
+          "when": "false"
+        },
+        {
+          "command": "layerLens.soloContext",
           "when": "false"
         }
       ]

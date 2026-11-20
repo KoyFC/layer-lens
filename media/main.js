@@ -68,6 +68,19 @@
     return b;
   }
 
+  function contextChip(c) {
+    const b = chip(
+      c.name,
+      c.active,
+      (e) => vscode.postMessage({ type: 'toggleContext', context: c.name, solo: e.shiftKey || e.ctrlKey || e.metaKey }),
+      'var(--vscode-descriptionForeground)',
+      false,
+    );
+    b.title = 'Click: show or hide this context. Shift or Ctrl+click: show only this one. Right-click: more.';
+    b.dataset.context = c.name;
+    return b;
+  }
+
   function layerChip(l) {
     const b = chip(
       l.name,
@@ -574,6 +587,13 @@
     const allOn = model.layers.length > 0 && model.layers.every((l) => l.active);
     chips.replaceChildren(...model.layers.map(layerChip));
 
+    const contexts = $('contexts');
+    contexts.hidden = model.contexts.length === 0;
+    const heading = document.createElement('span');
+    heading.className = 'chips-label';
+    heading.textContent = 'Contexts';
+    contexts.replaceChildren(heading, ...model.contexts.map(contextChip));
+
     $('bulk').replaceChildren(
       chip(allOn ? 'Hide all' : 'Show all', null, () => vscode.postMessage({ type: 'toggleAll' }), null, true),
       chip('Invert', null, () => vscode.postMessage({ type: 'command', id: 'layerLens.invertLayers' }), null, true),
@@ -596,7 +616,7 @@
     if (model.tree.length === 0) {
       message.hidden = false;
       message.textContent = model.layers.length
-        ? 'No folders match the active layers. Enable a layer above.'
+        ? 'No folders match the active filters. Enable a layer or a context above.'
         : 'No layer folders found in this workspace. Use Edit layers or Rescan.';
     } else {
       message.hidden = !model.truncated;

@@ -6,7 +6,7 @@ import { FilterState, autoDetectEnabled, excludedNames, seedLayers, unique } fro
 import { LayerLensView, defaultColor } from './view';
 
 /** Commands get a plain string from the page's buttons, or the `data-vscode-context` object from a right-click menu. */
-function argOf(arg: unknown, key: 'uri' | 'layer'): string | undefined {
+function argOf(arg: unknown, key: 'uri' | 'layer' | 'context'): string | undefined {
   if (typeof arg === 'string') return arg;
   const value = arg && typeof arg === 'object' ? (arg as Record<string, unknown>)[key] : undefined;
   return typeof value === 'string' ? value : undefined;
@@ -177,6 +177,51 @@ export function activate(context: vscode.ExtensionContext): void {
     const layer = argOf(arg, 'layer');
     if (!layer) return;
     state.solo(layer);
+    view.rerender();
+  });
+  reg('layerLens.pickContexts', async () => {
+    const items = state.contexts.map((c) => ({ label: c, picked: state.isContextActive(c) }));
+    if (items.length === 0) {
+      void vscode.window.showInformationMessage('Layer Lens: no contexts found (folders that contain a layer folder).');
+      return;
+    }
+    const picked = await vscode.window.showQuickPick(items, { canPickMany: true, title: 'Layer Lens: visible contexts' });
+    if (!picked) return;
+    state.setShownContexts(picked.map((p) => p.label));
+    view.rerender();
+  });
+  reg('layerLens.editContexts', async () => {
+    const items = state.detectedContexts.map((c) => ({ label: c, picked: !state.isContextIgnored(c) }));
+    if (items.length === 0) {
+      void vscode.window.showInformationMessage('Layer Lens: no contexts found (folders that contain a layer folder).');
+      return;
+    }
+    const picked = await vscode.window.showQuickPick(items, {
+      canPickMany: true,
+      ignoreFocusOut: true,
+      title: 'Layer Lens: folders treated as contexts',
+      placeHolder: 'Uncheck what is not a context',
+    });
+    if (!picked) return;
+    state.setContexts(picked.map((p) => p.label));
+    view.rerender();
+  });
+  reg('layerLens.soloContext', (arg?: unknown) => {
+    const context = argOf(arg, 'context');
+    if (!context) return;
+    state.soloContext(context);
+    view.rerender();
+  });
+  reg('layerLens.showAllContexts', () => {
+    state.setShownContexts(state.contexts);
+    view.rerender();
+  });
+  reg('layerLens.hideAllContexts', () => {
+    state.setShownContexts([]);
+    view.rerender();
+  });
+  reg('layerLens.invertContexts', () => {
+    state.invertContexts();
     view.rerender();
   });
   reg('layerLens.hideAll', () => {

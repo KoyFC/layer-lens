@@ -5,6 +5,8 @@ const OTHERS_KEY = 'layerLens.showOthers';
 const FLATTEN_KEY = 'layerLens.flatten';
 const LAYERS_KEY = 'layerLens.layerList';
 const COLORS_KEY = 'layerLens.colors';
+const HIDDEN_CONTEXTS_KEY = 'layerLens.hiddenContexts';
+const IGNORED_CONTEXTS_KEY = 'layerLens.ignoredContexts';
 
 const DEFAULT_LAYERS = ['application', 'domain', 'infrastructure'];
 
@@ -31,16 +33,24 @@ export class FilterState {
   private list: string[] | undefined;
   private active: Set<string>;
   private colors: Record<string, string>;
+  /** Contexts (folders that hold layer folders) switched off. Only the hidden ones are stored, so new contexts start visible. */
+  private hiddenContexts: Set<string>;
+  /** Detected contexts the user says are not contexts (e.g. `src`): no chip, and their layers follow the layer filters only. */
+  private ignoredContexts: Set<string>;
   showOthers: boolean;
   flatten: boolean;
   /** Layer names that have a folder in this workspace right now; undefined until the view has looked. */
   present: Set<string> | undefined;
+  /** Every context detected in this workspace right now (lowercase, sorted); empty until the view has looked. */
+  detectedContexts: string[] = [];
   /** Names found by the last scan with how many places repeat them (not persisted). */
   candidates = new Map<string, number>();
 
   constructor(private readonly memento: vscode.Memento) {
     this.list = memento.get<string[]>(LAYERS_KEY);
     this.colors = memento.get<Record<string, string>>(COLORS_KEY, {});
+    this.hiddenContexts = new Set(memento.get<string[]>(HIDDEN_CONTEXTS_KEY, []));
+    this.ignoredContexts = new Set(memento.get<string[]>(IGNORED_CONTEXTS_KEY, []));
     const stored = memento.get<string[]>(ACTIVE_KEY);
     this.active = new Set((stored ?? this.layers()).map((l) => l.toLowerCase()));
     this.showOthers = memento.get<boolean>(OTHERS_KEY, false);
@@ -137,6 +147,71 @@ export class FilterState {
     this.persist();
   }
 
+  // ---- contexts ----------------------------------------------------------
+
+  /** The contexts that get a chip: the detected ones minus the ones the user ruled out. */
+  get contexts(): string[] {
+    return this.detectedContexts.filter((c) => !this.ignoredContexts.has(c));
+  }
+
+  isContextIgnored(context: string): boolean {
+    return this.ignoredContexts.has(context.toLowerCase());
+  }
+
+  /** Keeps exactly these detected contexts; the others stop being contexts and are never hidden. */
+  setContexts(kept: string[]): void {
+    const keep = new Set(kept.map((c) => c.toLowerCase()));
+    for (const c of this.detectedContexts) {
+      if (keep.has(c)) {
+        this.ignoredContexts.delete(c);
+      } else {
+        this.ignoredContexts.add(c);
+        this.hiddenContexts.delete(c);
+      }
+    }
+    this.persist();
+  }
+
+  isContextActive(context: string): boolean {
+    return !this.hiddenContexts.has(context.toLowerCase());
+  }
+
+  /** Visible contexts among those that exist here. */
+  activeContexts(): string[] {
+    return this.contexts.filter((c) => this.isContextActive(c));
+  }
+
+  setContext(context: string, on: boolean): void {
+    if (on) this.hiddenContexts.delete(context.toLowerCase());
+    else this.hiddenContexts.add(context.toLowerCase());
+    this.persist();
+  }
+
+  /** Makes exactly these contexts visible among those that exist here; the others keep their state. */
+  setShownContexts(visible: string[]): void {
+    const keep = new Set(visible.map((c) => c.toLowerCase()));
+    for (const c of this.contexts) {
+      if (keep.has(c)) this.hiddenContexts.delete(c);
+      else this.hiddenContexts.add(c);
+    }
+    this.persist();
+  }
+
+  /** Shows only this context; when it is already the only one, shows every context again. */
+  soloContext(context: string): void {
+    const only = this.activeContexts();
+    const already = only.length === 1 && only[0] === context.toLowerCase();
+    this.setShownContexts(already ? this.contexts : [context]);
+  }
+
+  invertContexts(): void {
+    this.setShownContexts(this.contexts.filter((c) => !this.isContextActive(c)));
+  }
+
+  toggleAllContexts(): void {
+    this.setShownContexts(this.activeContexts().length === this.contexts.length ? [] : this.contexts);
+  }
+
   toggleOthers(): void {
     this.showOthers = !this.showOthers;
     this.persist();
@@ -150,9 +225,12 @@ export class FilterState {
   /** Whether a path made of these directory segments shows up under the current filters. */
   isVisible(directorySegments: string[]): boolean {
     const layers = this.layers();
-    for (const seg of directorySegments) {
-      const lower = seg.toLowerCase();
-      if (layers.includes(lower)) return this.isActive(lower);
+    for (let i = 0; i < directorySegments.length; i++) {
+      const lower = directorySegments[i].toLowerCase();
+      if (!layers.includes(lower)) continue;
+      // The folder holding the layer is its context.
+      if (i > 0 && !this.isContextActive(directorySegments[i - 1])) return false;
+      return this.isActive(lower);
     }
     return this.showOthers;
   }
@@ -160,6 +238,8 @@ export class FilterState {
   private persist(): void {
     void this.memento.update(LAYERS_KEY, this.list);
     void this.memento.update(COLORS_KEY, this.colors);
+    void this.memento.update(HIDDEN_CONTEXTS_KEY, [...this.hiddenContexts]);
+    void this.memento.update(IGNORED_CONTEXTS_KEY, [...this.ignoredContexts]);
     void this.memento.update(ACTIVE_KEY, [...this.active]);
     void this.memento.update(OTHERS_KEY, this.showOthers);
     void this.memento.update(FLATTEN_KEY, this.flatten);

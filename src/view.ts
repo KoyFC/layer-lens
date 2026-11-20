@@ -19,6 +19,11 @@ const COMMANDS = new Set([
   'layerLens.showAll',
   'layerLens.hideAll',
   'layerLens.invertLayers',
+  'layerLens.soloContext',
+  'layerLens.showAllContexts',
+  'layerLens.hideAllContexts',
+  'layerLens.invertContexts',
+  'layerLens.editContexts',
   'layerLens.reveal',
   'layerLens.copyRelativePath',
   'layerLens.rename',
@@ -113,7 +118,8 @@ export class LayerLensView implements vscode.WebviewViewProvider {
   private async post(): Promise<void> {
     if (!this.view) return;
     // Look for the layer folders first: only the ones that exist get a chip, and the filters count only those.
-    this.state.present = await this.model.presentLayers(this.state.layers());
+    this.state.present = await this.model.presentLayers(this.state.layers(), true);
+    this.state.detectedContexts = this.model.contexts;
     const all = this.state.layers();
     const layers = this.state.shownLayers().map((name) => ({
       name,
@@ -131,6 +137,7 @@ export class LayerLensView implements vscode.WebviewViewProvider {
     void this.view.webview.postMessage({
       type: 'model',
       layers,
+      contexts: this.state.contexts.map((name) => ({ name, active: this.state.isContextActive(name) })),
       showOthers: this.state.showOthers,
       flatten: this.state.flatten,
       tree,
@@ -152,6 +159,10 @@ export class LayerLensView implements vscode.WebviewViewProvider {
       case 'toggleAll':
         this.state.toggleAll();
         return this.post();
+      case 'toggleContext':
+        if (msg.solo) this.state.soloContext(String(msg.context));
+        else this.state.setContext(String(msg.context), !this.state.isContextActive(String(msg.context)));
+        return this.post();
       case 'toggleOthers':
         this.state.toggleOthers();
         return this.post();
@@ -160,7 +171,7 @@ export class LayerLensView implements vscode.WebviewViewProvider {
         return this.post();
       case 'command':
         // Only the view's own commands can be triggered from the page.
-        if (COMMANDS.has(String(msg.id))) await vscode.commands.executeCommand(String(msg.id), msg.layer ?? msg.uri);
+        if (COMMANDS.has(String(msg.id))) await vscode.commands.executeCommand(String(msg.id), msg.layer ?? msg.context ?? msg.uri);
         return;
       case 'create': {
         const error = await vscode.commands.executeCommand<string | undefined>(
@@ -208,6 +219,7 @@ export class LayerLensView implements vscode.WebviewViewProvider {
 <body>
 <div class="chips" id="chips" role="group" aria-label="Layer filters"></div>
 <div class="chips bulk" id="bulk" role="group" aria-label="All layers"></div>
+<div class="chips contexts" id="contexts" role="group" aria-label="Context filters" hidden></div>
 <div class="chips options" id="options" role="group" aria-label="View options"></div>
 <div class="message" id="message" hidden></div>
 <div class="tree" id="tree" role="tree"></div>

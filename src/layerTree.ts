@@ -32,31 +32,44 @@ export class LayerModel {
   private readonly containsCache = new Map<string, boolean>();
   private budget = 0;
   truncated = false;
+  /** Contexts seen by the last full `presentLayers` scan. */
+  contexts: string[] = [];
 
   constructor(private readonly state: FilterState) {}
 
   /** The given layer names that exist as a folder anywhere in the workspace (excluded folders aside). */
-  async presentLayers(names: string[]): Promise<Set<string>> {
+  async presentLayers(names: string[], collectContexts = false): Promise<Set<string>> {
     const wanted = new Set(names.map((n) => n.toLowerCase()));
     const found = new Set<string>();
+    const contexts = new Set<string>();
     const exclude = excludedNames();
     let budget = MAX_NODES;
 
     const visit = async (dir: vscode.Uri, depth: number): Promise<void> => {
-      if (found.size === wanted.size || depth > MAX_DEPTH || budget-- <= 0) return;
+      if ((!collectContexts && found.size === wanted.size) || depth > MAX_DEPTH || budget-- <= 0) return;
+      const context = this.contextOf(dir);
       for (const e of await this.read(dir)) {
         if (!e.isDir || exclude.has(e.name)) continue;
         const lower = e.name.toLowerCase();
-        if (wanted.has(lower)) found.add(lower);
+        if (!wanted.has(lower)) continue;
+        found.add(lower);
+        if (context && !wanted.has(context)) contexts.add(context);
       }
       for (const e of await this.read(dir)) {
-        if (found.size === wanted.size) return;
+        if (!collectContexts && found.size === wanted.size) return;
         if (e.isDir && !exclude.has(e.name)) await visit(vscode.Uri.joinPath(dir, e.name), depth + 1);
       }
     };
 
     for (const f of vscode.workspace.workspaceFolders ?? []) await visit(f.uri, 0);
+    if (collectContexts) this.contexts = [...contexts].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     return found;
+  }
+
+  /** The context a layer folder inside `dir` belongs to: the name of `dir`, unless it is a workspace folder. */
+  private contextOf(dir: vscode.Uri): string | undefined {
+    if ((vscode.workspace.workspaceFolders ?? []).some((f) => f.uri.toString() === dir.toString())) return undefined;
+    return dir.path.slice(dir.path.lastIndexOf('/') + 1).toLowerCase() || undefined;
   }
 
   invalidate(): void {
@@ -67,6 +80,7 @@ export class LayerModel {
   async build(): Promise<TreeNode[]> {
     this.budget = 0;
     this.truncated = false;
+    this.containsCache.clear(); // depends on the filters, which may have changed since the last build
     const folders = vscode.workspace.workspaceFolders ?? [];
     if (folders.length === 1) {
       return this.populate(await this.visibleChildren(folders[0].uri, undefined));
@@ -108,6 +122,8 @@ export class LayerModel {
     const layers = this.state.layers();
     const exclude = excludedNames();
     const activeCount = this.state.activeLayers().length;
+    const context = this.contextOf(dir);
+    const contextHidden = context !== undefined && !this.state.isContextActive(context);
     const out: TreeNode[] = [];
 
     for (const e of await this.read(dir)) {
@@ -125,7 +141,7 @@ export class LayerModel {
 
       const lower = e.name.toLowerCase();
       if (layers.includes(lower)) {
-        if (!this.state.isActive(lower)) continue;
+        if (contextHidden || !this.state.isActive(lower)) continue;
         if (this.state.flatten && activeCount === 1) {
           out.push(...(await this.visibleChildren(uri, lower)));
         } else {
@@ -166,12 +182,14 @@ export class LayerModel {
 
     const layers = this.state.layers();
     const exclude = excludedNames();
+    const context = this.contextOf(dir);
+    const contextHidden = context !== undefined && !this.state.isContextActive(context);
     let found = false;
     for (const e of await this.read(dir)) {
       if (!e.isDir || exclude.has(e.name)) continue;
       const lower = e.name.toLowerCase();
       if (layers.includes(lower)) {
-        if (this.state.isActive(lower)) {
+        if (!contextHidden && this.state.isActive(lower)) {
           found = true;
           break;
         }

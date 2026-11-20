@@ -10,7 +10,10 @@ body {
   gap: 6px;
   padding: 8px 10px 4px;
 }
-.chips.bulk, .chips.options { padding-top: 0; }
+.chips[hidden] { display: none; }
+.chips.bulk, .chips.options, .chips.contexts { padding-top: 0; }
+.chips.contexts { align-items: center; }
+.chips-label { color: var(--vscode-descriptionForeground); font-size: 0.9em; }
 .chips.options { padding-bottom: 8px; }
 
 .chip {
