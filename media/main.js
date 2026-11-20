@@ -164,17 +164,43 @@
       { label: 'Show all layers', run: run('layerLens.showAll') },
       { label: 'Hide all layers', run: run('layerLens.hideAll') },
       { label: 'Invert layer filters', run: run('layerLens.invertLayers') },
+      '-',
+      ...(layer ? [] : [{ label: 'Change layer color…', run: run('layerLens.editColor') }]),
+      { label: 'Edit layers…', run: run('layerLens.editLayers') },
+      { label: 'Edit contexts…', run: run('layerLens.editContexts') },
+      '-',
+      { label: 'Rescan layers', run: run('layerLens.rescan') },
     );
     return items;
   }
 
-  for (const id of ['chips', 'bulk']) {
-    $(id).addEventListener('contextmenu', (e) => {
-      e.preventDefault(); // also stops VS Code from showing its own menu
-      const chip = e.target.closest('.chip[data-layer]');
-      openMenu(e.clientX, e.clientY, layerMenu(chip ? chip.dataset.layer : null));
-    });
+  function contextMenu(context) {
+    const run = (id, extra) => () => vscode.postMessage({ type: 'command', id, ...extra });
+    const items = [];
+    if (context) {
+      items.push({ label: 'Show only this context (' + context + ')', hint: 'Shift+click', run: run('layerLens.soloContext', { context }) }, '-');
+    }
+    items.push(
+      { label: 'Show all contexts', run: run('layerLens.showAllContexts') },
+      { label: 'Hide all contexts', run: run('layerLens.hideAllContexts') },
+      { label: 'Invert context filters', run: run('layerLens.invertContexts') },
+      '-',
+      { label: 'Edit contexts…', run: run('layerLens.editContexts') },
+      { label: 'Edit layers…', run: run('layerLens.editLayers') },
+      '-',
+      { label: 'Rescan layers', run: run('layerLens.rescan') },
+    );
+    return items;
   }
+
+  // One handler for the whole filter area: the menu depends on what was clicked.
+  $('filters').addEventListener('contextmenu', (e) => {
+    e.preventDefault(); // also stops VS Code from showing its own menu
+    const context = e.target.closest('.chip[data-context]');
+    const layer = e.target.closest('.chip[data-layer]');
+    if (context || (!layer && e.target.closest('#contexts'))) openMenu(e.clientX, e.clientY, contextMenu(context ? context.dataset.context : null));
+    else openMenu(e.clientX, e.clientY, layerMenu(layer ? layer.dataset.layer : null));
+  });
   document.addEventListener('mousedown', (e) => { if (menuEl && !menuEl.contains(e.target)) closeMenu(); });
   window.addEventListener('blur', closeMenu);
   window.addEventListener('resize', closeMenu);
@@ -626,9 +652,6 @@
       chip('Other folders', model.showOthers, () => vscode.postMessage({ type: 'toggleOthers' }), null, true),
       chip('Flatten layer', model.flatten, () => vscode.postMessage({ type: 'toggleFlatten' }), null, true),
       chip('Auto names', model.autoNames, () => vscode.postMessage({ type: 'toggleAutoNames' }), null, true),
-      chip('Colors', null, () => vscode.postMessage({ type: 'command', id: 'layerLens.editColor' }), null, true),
-      chip('Edit layers', null, () => vscode.postMessage({ type: 'command', id: 'layerLens.editLayers' }), null, true),
-      chip('Rescan', null, () => vscode.postMessage({ type: 'command', id: 'layerLens.rescan' }), null, true),
     );
 
     const message = $('message');

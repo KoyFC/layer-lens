@@ -4,6 +4,14 @@ body {
   font-size: var(--vscode-font-size);
   color: var(--vscode-foreground);
 }
+/* The filters stay put while the tree scrolls underneath. */
+.filters {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, transparent);
+}
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -120,7 +128,7 @@ body {
 
 .ctx-menu {
   position: fixed;
-  z-index: 10;
+  z-index: 20;
   min-width: 180px;
   padding: 4px 0;
   background: var(--vscode-menu-background, var(--vscode-editorWidget-background));

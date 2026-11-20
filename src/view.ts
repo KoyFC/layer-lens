@@ -236,10 +236,12 @@ export class LayerLensView implements vscode.WebviewViewProvider {
 <link rel="stylesheet" href="${css}">
 </head>
 <body>
+<div class="filters" id="filters">
 <div class="chips" id="chips" role="group" aria-label="Layer filters"></div>
 <div class="chips bulk" id="bulk" role="group" aria-label="All layers"></div>
 <div class="chips contexts" id="contexts" role="group" aria-label="Context filters" hidden></div>
 <div class="chips options" id="options" role="group" aria-label="View options"></div>
+</div>
 <div class="message" id="message" hidden></div>
 <div class="tree" id="tree" role="tree"></div>
 <script nonce="${nonce}" src="${js}"></script>
