@@ -174,6 +174,11 @@
         "command": "layerLens.editContexts",
         "title": "Edit contexts…",
         "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.toggleAutoNames",
+        "title": "Toggle automatic display names",
+        "category": "Layer Lens"
       }
     ],
     "menus": {
@@ -247,6 +252,11 @@
           "command": "layerLens.editContexts",
           "when": "view == layerLens.tree",
           "group": "2_contexts@2"
+        },
+        {
+          "command": "layerLens.toggleAutoNames",
+          "when": "view == layerLens.tree",
+          "group": "3_view@3"
         }
       ],
       "webview/context": [
@@ -394,6 +404,11 @@
           "type": "boolean",
           "default": true,
           "description": "The first time a workspace is opened, scan it for folder names repeated across sibling folders (e.g. contexts/*/application) and ask which ones to treat as layers. \"Layer Lens: rescan layers\" can be run at any time."
+        },
+        "layerLens.autoDisplayNames": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show readable display names for files (create-user.dto.ts -> Create User Dto) in new workspaces. Names set by hand are never changed. It can be toggled per workspace with the \"Auto names\" chip."
         }
       }
     }

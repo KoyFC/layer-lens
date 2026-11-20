@@ -150,6 +150,7 @@ export class LayerLensView implements vscode.WebviewViewProvider {
       contexts: this.state.contexts.map((name) => ({ name, active: this.state.isContextActive(name) })),
       showOthers: this.state.showOthers,
       flatten: this.state.flatten,
+      autoNames: this.state.autoNames,
       tree,
       rootUri: (vscode.workspace.workspaceFolders ?? []).length === 1 ? vscode.workspace.workspaceFolders![0].uri.toString() : undefined,
       icons,
@@ -175,6 +176,9 @@ export class LayerLensView implements vscode.WebviewViewProvider {
         return this.post();
       case 'toggleOthers':
         this.state.toggleOthers();
+        return this.post();
+      case 'toggleAutoNames':
+        this.state.toggleAutoNames();
         return this.post();
       case 'toggleFlatten':
         this.state.toggleFlatten();

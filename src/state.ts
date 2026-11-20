@@ -7,6 +7,7 @@ const LAYERS_KEY = 'layerLens.layerList';
 const COLORS_KEY = 'layerLens.colors';
 const HIDDEN_CONTEXTS_KEY = 'layerLens.hiddenContexts';
 const IGNORED_CONTEXTS_KEY = 'layerLens.ignoredContexts';
+const AUTO_NAMES_KEY = 'layerLens.autoNames';
 const DISPLAY_NAMES_KEY = 'layerLens.displayNames';
 
 const DEFAULT_LAYERS = ['application', 'domain', 'infrastructure'];
@@ -30,6 +31,25 @@ export function excludedNames(): Set<string> {
   return new Set(raw);
 }
 
+/**
+ * Turns a file name into a readable one: `create-user.dto.ts` -> `Create User Dto`.
+ * The last extension is dropped; words split on `-`, `_`, `.`, spaces and camelCase.
+ * Words already in capitals (`README`) are kept. Returns undefined when there is nothing to improve.
+ */
+export function autoDisplayName(fileName: string): string | undefined {
+  const dot = fileName.lastIndexOf('.');
+  if (dot <= 0) return undefined; // dotfiles such as `.gitignore`, and names without an extension, stay as they are
+  const words = fileName
+    .slice(0, dot)
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .split(/[-_.\s]+/)
+    .filter(Boolean)
+    .map((w) => (w === w.toUpperCase() ? w : w[0].toUpperCase() + w.slice(1)));
+  const name = words.join(' ');
+  return name && name !== fileName ? name : undefined;
+}
+
 export class FilterState {
   private list: string[] | undefined;
   private active: Set<string>;
@@ -42,6 +62,8 @@ export class FilterState {
   private displayNames: Record<string, string>;
   showOthers: boolean;
   flatten: boolean;
+  /** Derive a display name from every file name that has no manual one. */
+  autoNames: boolean;
   /** Layer names that have a folder in this workspace right now; undefined until the view has looked. */
   present: Set<string> | undefined;
   /** Every context detected in this workspace right now (lowercase, sorted); empty until the view has looked. */
@@ -58,6 +80,10 @@ export class FilterState {
     const stored = memento.get<string[]>(ACTIVE_KEY);
     this.active = new Set((stored ?? this.layers()).map((l) => l.toLowerCase()));
     this.showOthers = memento.get<boolean>(OTHERS_KEY, false);
+    this.autoNames = memento.get<boolean>(
+      AUTO_NAMES_KEY,
+      vscode.workspace.getConfiguration('layerLens').get<boolean>('autoDisplayNames', false),
+    );
     this.flatten = memento.get<boolean>(
       FLATTEN_KEY,
       vscode.workspace.getConfiguration('layerLens').get<boolean>('flattenLayerFolder', false),
@@ -255,6 +281,11 @@ export class FilterState {
     this.persist();
   }
 
+  toggleAutoNames(): void {
+    this.autoNames = !this.autoNames;
+    this.persist();
+  }
+
   toggleFlatten(): void {
     this.flatten = !this.flatten;
     this.persist();
@@ -282,5 +313,6 @@ export class FilterState {
     void this.memento.update(ACTIVE_KEY, [...this.active]);
     void this.memento.update(OTHERS_KEY, this.showOthers);
     void this.memento.update(FLATTEN_KEY, this.flatten);
+    void this.memento.update(AUTO_NAMES_KEY, this.autoNames);
   }
 }

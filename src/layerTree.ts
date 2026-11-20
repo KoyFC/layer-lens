@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { FilterState, excludedNames } from './state';
+import { FilterState, autoDisplayName, excludedNames } from './state';
 
 const MAX_DEPTH = 12;
 const MAX_NODES = 8000;
@@ -121,14 +121,16 @@ export class LayerModel {
   }
 
   private node(uri: vscode.Uri, label: string, isDir: boolean, layer?: string, layerRoot = false): TreeNode {
-    const alias = this.state.displayName(uri.toString());
+    // A manual name always wins; the automatic one only fills in for files without it.
+    const manual = this.state.displayName(uri.toString());
+    const alias = manual ?? (this.state.autoNames && !isDir ? autoDisplayName(label) : undefined);
     return {
       key: `${uri.toString()}|${label}`,
       uri: uri.toString(),
       label: alias ?? label,
       name: label,
-      hasDisplayName: alias ? true : undefined,
-      description: alias ? label : undefined,
+      hasDisplayName: manual ? true : undefined,
+      description: alias && alias !== label ? label : undefined,
       isDir,
       layer,
       layerRoot: layerRoot || undefined,

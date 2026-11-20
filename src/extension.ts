@@ -240,6 +240,10 @@ export function activate(context: vscode.ExtensionContext): void {
     state.toggleOthers();
     view.rerender();
   });
+  reg('layerLens.toggleAutoNames', () => {
+    state.toggleAutoNames();
+    view.rerender();
+  });
   reg('layerLens.toggleFlatten', () => {
     state.toggleFlatten();
     view.rerender();
@@ -415,7 +419,8 @@ export function activate(context: vscode.ExtensionContext): void {
   /** Sets the name shown in the tree for `uri`; an empty name, or the real one, removes it. Nothing is renamed on disk. */
   const setDisplayName = (uri: vscode.Uri, name: string): void => {
     const next = name.trim();
-    state.setDisplayName(uri.toString(), next && next !== baseName(uri) ? next : undefined);
+    // With automatic names on, typing the real name is how a file opts out of them, so it is kept.
+    state.setDisplayName(uri.toString(), next && (state.autoNames || next !== baseName(uri)) ? next : undefined);
     view.rerender();
   };
 
