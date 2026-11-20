@@ -1,3 +1,5 @@
+/* Always reserve the scrollbar's width so the chips don't re-wrap when it appears. */
+html { scrollbar-gutter: stable; }
 body {
   padding: 0;
   font-family: var(--vscode-font-family);
