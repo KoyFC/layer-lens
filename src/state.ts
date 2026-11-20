@@ -7,6 +7,7 @@ const LAYERS_KEY = 'layerLens.layerList';
 const COLORS_KEY = 'layerLens.colors';
 const HIDDEN_CONTEXTS_KEY = 'layerLens.hiddenContexts';
 const IGNORED_CONTEXTS_KEY = 'layerLens.ignoredContexts';
+const DISPLAY_NAMES_KEY = 'layerLens.displayNames';
 
 const DEFAULT_LAYERS = ['application', 'domain', 'infrastructure'];
 
@@ -37,6 +38,8 @@ export class FilterState {
   private hiddenContexts: Set<string>;
   /** Detected contexts the user says are not contexts (e.g. `src`): no chip, and their layers follow the layer filters only. */
   private ignoredContexts: Set<string>;
+  /** Names shown in the tree instead of the real ones, keyed by file URI. They never touch the disk. */
+  private displayNames: Record<string, string>;
   showOthers: boolean;
   flatten: boolean;
   /** Layer names that have a folder in this workspace right now; undefined until the view has looked. */
@@ -51,6 +54,7 @@ export class FilterState {
     this.colors = memento.get<Record<string, string>>(COLORS_KEY, {});
     this.hiddenContexts = new Set(memento.get<string[]>(HIDDEN_CONTEXTS_KEY, []));
     this.ignoredContexts = new Set(memento.get<string[]>(IGNORED_CONTEXTS_KEY, []));
+    this.displayNames = memento.get<Record<string, string>>(DISPLAY_NAMES_KEY, {});
     const stored = memento.get<string[]>(ACTIVE_KEY);
     this.active = new Set((stored ?? this.layers()).map((l) => l.toLowerCase()));
     this.showOthers = memento.get<boolean>(OTHERS_KEY, false);
@@ -212,6 +216,40 @@ export class FilterState {
     this.setShownContexts(this.activeContexts().length === this.contexts.length ? [] : this.contexts);
   }
 
+  // ---- display names -----------------------------------------------------
+
+  displayName(uri: string): string | undefined {
+    return this.displayNames[uri];
+  }
+
+  /** Sets the name shown for a file, or goes back to the real one when `name` is empty. */
+  setDisplayName(uri: string, name: string | undefined): void {
+    const next = { ...this.displayNames };
+    if (name) next[uri] = name;
+    else delete next[uri];
+    this.displayNames = next;
+    this.persist();
+  }
+
+  /** Carries the names of a file (and of everything inside a folder) to where it was moved. Returns whether any changed. */
+  moveDisplayNames(from: string, to: string | undefined): boolean {
+    const next: Record<string, string> = {};
+    let changed = false;
+    for (const [key, name] of Object.entries(this.displayNames)) {
+      if (key === from || key.startsWith(from + '/')) {
+        changed = true;
+        if (to !== undefined) next[to + key.slice(from.length)] = name;
+      } else {
+        next[key] = name;
+      }
+    }
+    if (changed) {
+      this.displayNames = next;
+      this.persist();
+    }
+    return changed;
+  }
+
   toggleOthers(): void {
     this.showOthers = !this.showOthers;
     this.persist();
@@ -240,6 +278,7 @@ export class FilterState {
     void this.memento.update(COLORS_KEY, this.colors);
     void this.memento.update(HIDDEN_CONTEXTS_KEY, [...this.hiddenContexts]);
     void this.memento.update(IGNORED_CONTEXTS_KEY, [...this.ignoredContexts]);
+    void this.memento.update(DISPLAY_NAMES_KEY, this.displayNames);
     void this.memento.update(ACTIVE_KEY, [...this.active]);
     void this.memento.update(OTHERS_KEY, this.showOthers);
     void this.memento.update(FLATTEN_KEY, this.flatten);

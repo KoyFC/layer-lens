@@ -410,6 +410,41 @@ export function activate(context: vscode.ExtensionContext): void {
     return renameTo(uri, name);
   });
 
+  // ---- display names ------------------------------------------------------
+
+  /** Sets the name shown in the tree for `uri`; an empty name, or the real one, removes it. Nothing is renamed on disk. */
+  const setDisplayName = (uri: vscode.Uri, name: string): void => {
+    const next = name.trim();
+    state.setDisplayName(uri.toString(), next && next !== baseName(uri) ? next : undefined);
+    view.rerender();
+  };
+
+  reg('layerLens.setDisplayName', async (arg?: unknown) => {
+    const uri = inWorkspace(arg);
+    if (!uri || isWorkspaceRoot(uri)) return;
+    if (view.startInlineDisplayName(uri)) return;
+    const name = await vscode.window.showInputBox({
+      title: 'Display name',
+      prompt: 'Only shown in Layer Lens; the file is not renamed. Leave empty to use the real name.',
+      value: state.displayName(uri.toString()) ?? baseName(uri),
+    });
+    if (name !== undefined) setDisplayName(uri, name);
+  });
+  // Called by the page once a display name has been typed in the tree.
+  reg('layerLens.setDisplayNameTo', (uriText?: unknown, name?: unknown) => {
+    if (typeof uriText !== 'string' || typeof name !== 'string') return 'Invalid request';
+    const uri = vscode.Uri.parse(uriText);
+    if (!vscode.workspace.getWorkspaceFolder(uri) || isWorkspaceRoot(uri)) return 'Outside the workspace';
+    setDisplayName(uri, name);
+    return undefined;
+  });
+  reg('layerLens.clearDisplayName', (arg?: unknown) => {
+    const uri = inWorkspace(arg);
+    if (!uri) return;
+    state.setDisplayName(uri.toString(), undefined);
+    view.rerender();
+  });
+
   reg('layerLens.delete', async (arg?: unknown) => {
     const uri = inWorkspace(arg);
     if (!uri || isWorkspaceRoot(uri)) return;
@@ -599,6 +634,17 @@ export function activate(context: vscode.ExtensionContext): void {
     watcher.onDidCreate(schedule),
     watcher.onDidDelete(schedule),
     vscode.workspace.onDidChangeWorkspaceFolders(schedule),
+    // Display names follow their file when it is renamed or moved (from the tree or the Explorer), and go when it is deleted.
+    vscode.workspace.onDidRenameFiles((e) => {
+      let changed = false;
+      for (const f of e.files) changed = state.moveDisplayNames(f.oldUri.toString(), f.newUri.toString()) || changed;
+      if (changed) view.refresh();
+    }),
+    vscode.workspace.onDidDeleteFiles((e) => {
+      let changed = false;
+      for (const uri of e.files) changed = state.moveDisplayNames(uri.toString(), undefined) || changed;
+      if (changed) view.refresh();
+    }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('layerLens.layers')) state.setLayers([...state.layers(), ...seedLayers()]);
       if (e.affectsConfiguration('layerLens')) view.refresh();

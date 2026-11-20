@@ -153,7 +153,8 @@ export class IconTheme {
     const walk = (list: TreeNode[]): void => {
       for (const n of list) {
         // Compacted folders ("a/b/c") are named after their last segment.
-        const base = n.label.slice(n.label.lastIndexOf('/') + 1);
+        // The real name decides the icon, not a display name.
+        const base = n.name ?? n.label.slice(n.label.lastIndexOf('/') + 1);
         if (n.isDir) {
           n.icon = this.folderIcon(base, false);
           n.iconOpen = this.folderIcon(base, true);

@@ -251,7 +251,7 @@
     el.tabIndex = 0;
     el.setAttribute('role', 'treeitem');
     el.style.paddingLeft = 6 + depth * 14 + 'px';
-    el.title = node.label;
+    el.title = node.description ? node.label + ' (' + node.description + ')' : node.label;
 
     // Rows can be dragged onto a folder to move them (Ctrl or Alt copies instead).
     if (!node.workspaceRoot) {
@@ -270,6 +270,7 @@
       webviewSection: node.isDir ? 'dir' : 'file',
       uri: node.uri,
       workspaceRoot: !!node.workspaceRoot,
+      hasDisplayName: !!node.hasDisplayName,
       preventDefaultContextMenuItems: true,
     });
 
@@ -293,6 +294,13 @@
     label.className = 'label';
     label.textContent = node.label;
     el.appendChild(label);
+    if (node.description) {
+      label.classList.add('has-description');
+      const description = document.createElement('span');
+      description.className = 'description';
+      description.textContent = node.description;
+      el.appendChild(description);
+    }
 
     const actions = document.createElement('span');
     actions.className = 'actions';
@@ -312,6 +320,7 @@
       const key = e.key.toLowerCase();
       if (accel && key === 'v') run('layerLens.paste');
       else if (node.workspaceRoot) return;
+      else if (e.key === 'F2' && e.shiftKey) run('layerLens.setDisplayName');
       else if (e.key === 'F2') run('layerLens.rename');
       else if (e.key === 'Delete') run('layerLens.delete');
       else if (accel && key === 'c') run('layerLens.copy');
@@ -422,7 +431,7 @@
   function renderPending() {
     // While the extension is creating it the field stays gone: success refreshes the tree under it.
     if (!pending || pending.submitting) return;
-    if (pending.mode === 'rename') { renderRename(); return; }
+    if (pending.mode === 'rename' || pending.mode === 'displayName') { renderRename(); return; }
     const target = groups.get(pending.uri);
     if (!target) { pending = null; return; }
 
@@ -492,7 +501,7 @@
     if (!value) return 'Enter a name';
     if (/[\\/]/.test(value) || value === '.' || value === '..') return 'Names cannot contain slashes';
     // A compacted folder ("a/b/c") hides its siblings, so only the extension can check those.
-    if (!entry.node.label.includes('/') && entry.siblings.some((n) => n !== entry.node && n.label === value)) {
+    if (!entry.node.label.includes('/') && entry.siblings.some((n) => n !== entry.node && (n.name || n.label) === value)) {
       return 'That name already exists';
     }
     return null;
@@ -506,7 +515,8 @@
     input.type = 'text';
     input.className = 'rename-input';
     input.spellcheck = false;
-    input.setAttribute('aria-label', 'New name');
+    input.setAttribute('aria-label', pending.mode === 'displayName' ? 'Display name' : 'New name');
+    if (pending.mode === 'displayName') input.placeholder = 'Display name (empty for the real name)';
     input.value = pending.value;
     entry.label.replaceWith(input);
 
@@ -540,6 +550,11 @@
       e.preventDefault();
       if (pending.submitting) return;
       if (pending.value.trim() === pending.original) { cancelCreate(); return; }
+      if (pending.mode === 'displayName') {
+        pending.submitting = true;
+        vscode.postMessage({ type: 'setDisplayName', uri: pending.uri, name: pending.value.trim() });
+        return;
+      }
       const problem = renameProblem(entry, pending.value);
       pending.error = problem || '';
       showProblem(problem);
@@ -557,7 +572,7 @@
     if (pending.caret == null) {
       // Like the Explorer: select the name without its extension.
       const dot = pending.value.lastIndexOf('.');
-      input.setSelectionRange(0, !entry.node.isDir && dot > 0 ? dot : pending.value.length);
+      input.setSelectionRange(0, pending.mode === 'rename' && !entry.node.isDir && dot > 0 ? dot : pending.value.length);
     } else {
       input.setSelectionRange(pending.caret, pending.caret);
     }
@@ -567,6 +582,14 @@
     if (!model || !rows.get(uri)) return;
     const name = baseName(uri);
     pending = { mode: 'rename', uri, original: name, value: name, caret: null, error: '', submitting: false, input: null };
+    render();
+  }
+
+  function startDisplayName(uri) {
+    const entry = model && rows.get(uri);
+    if (!entry) return;
+    const value = entry.node.description ? entry.node.label : (entry.node.name || baseName(uri));
+    pending = { mode: 'displayName', uri, original: value, value, caret: null, error: '', submitting: false, input: null };
     render();
   }
 
@@ -636,7 +659,9 @@
       startCreate(data.kind, data.uri);
     } else if (data.type === 'startRename') {
       startRename(data.uri);
-    } else if ((data.type === 'createResult' || data.type === 'renameResult') && pending) {
+    } else if (data.type === 'startDisplayName') {
+      startDisplayName(data.uri);
+    } else if ((data.type === 'createResult' || data.type === 'renameResult' || data.type === 'displayNameResult') && pending) {
       if (data.error) {
         pending.submitting = false;
         pending.error = data.error;

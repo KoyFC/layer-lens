@@ -24,6 +24,8 @@ const COMMANDS = new Set([
   'layerLens.hideAllContexts',
   'layerLens.invertContexts',
   'layerLens.editContexts',
+  'layerLens.setDisplayName',
+  'layerLens.clearDisplayName',
   'layerLens.reveal',
   'layerLens.copyRelativePath',
   'layerLens.rename',
@@ -88,6 +90,14 @@ export class LayerLensView implements vscode.WebviewViewProvider {
     if (!this.view) return false;
     this.view.show(false);
     void this.view.webview.postMessage({ type: 'startRename', uri: uri.toString() });
+    return true;
+  }
+
+  /** Asks the page to edit the display name of a row in place. Returns false when the view is not available. */
+  startInlineDisplayName(uri: vscode.Uri): boolean {
+    if (!this.view) return false;
+    this.view.show(false);
+    void this.view.webview.postMessage({ type: 'startDisplayName', uri: uri.toString() });
     return true;
   }
 
@@ -186,6 +196,11 @@ export class LayerLensView implements vscode.WebviewViewProvider {
       case 'rename': {
         const error = await vscode.commands.executeCommand<string | undefined>('layerLens.renameTo', msg.uri, msg.name);
         void this.view?.webview.postMessage({ type: 'renameResult', error });
+        return;
+      }
+      case 'setDisplayName': {
+        const error = await vscode.commands.executeCommand<string | undefined>('layerLens.setDisplayNameTo', msg.uri, msg.name);
+        void this.view?.webview.postMessage({ type: 'displayNameResult', error });
         return;
       }
       case 'move':

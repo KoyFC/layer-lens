@@ -161,6 +161,16 @@
         "category": "Layer Lens"
       },
       {
+        "command": "layerLens.setDisplayName",
+        "title": "Set display name…",
+        "category": "Layer Lens"
+      },
+      {
+        "command": "layerLens.clearDisplayName",
+        "title": "Remove display name",
+        "category": "Layer Lens"
+      },
+      {
         "command": "layerLens.editContexts",
         "title": "Edit contexts…",
         "category": "Layer Lens"
@@ -284,6 +294,16 @@
           "command": "layerLens.duplicate",
           "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file)$/ && !workspaceRoot",
           "group": "3_clipboard@3"
+        },
+        {
+          "command": "layerLens.setDisplayName",
+          "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file)$/ && !workspaceRoot",
+          "group": "5_display@1"
+        },
+        {
+          "command": "layerLens.clearDisplayName",
+          "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file)$/ && !workspaceRoot && hasDisplayName",
+          "group": "5_display@2"
         }
       ],
       "commandPalette": [
@@ -321,6 +341,14 @@
         },
         {
           "command": "layerLens.soloContext",
+          "when": "false"
+        },
+        {
+          "command": "layerLens.setDisplayName",
+          "when": "false"
+        },
+        {
+          "command": "layerLens.clearDisplayName",
           "when": "false"
         }
       ]

@@ -14,6 +14,12 @@ export interface TreeNode {
   layer?: string;
   /** True for the layer folder itself (e.g. `application`). */
   layerRoot?: boolean;
+  /** Name given in Layer Lens only; `label` is then that name and `description` the real one. */
+  hasDisplayName?: boolean;
+  /** The real file name, shown dimmed beside a display name. */
+  description?: string;
+  /** The name on disk (the label is a display name or a compacted path). */
+  name?: string;
   /** True for a workspace folder shown as a root in a multi-root workspace. */
   workspaceRoot?: boolean;
   /** Icon theme definition ids, set by IconTheme.annotate. */
@@ -115,7 +121,18 @@ export class LayerModel {
   }
 
   private node(uri: vscode.Uri, label: string, isDir: boolean, layer?: string, layerRoot = false): TreeNode {
-    return { key: `${uri.toString()}|${label}`, uri: uri.toString(), label, isDir, layer, layerRoot: layerRoot || undefined };
+    const alias = this.state.displayName(uri.toString());
+    return {
+      key: `${uri.toString()}|${label}`,
+      uri: uri.toString(),
+      label: alias ?? label,
+      name: label,
+      hasDisplayName: alias ? true : undefined,
+      description: alias ? label : undefined,
+      isDir,
+      layer,
+      layerRoot: layerRoot || undefined,
+    };
   }
 
   private async visibleChildren(dir: vscode.Uri, layer: string | undefined): Promise<TreeNode[]> {
