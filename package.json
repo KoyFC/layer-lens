@@ -196,17 +196,17 @@
         {
           "command": "layerLens.showAll",
           "when": "view == layerLens.tree",
-          "group": "1_filter@0"
+          "group": "1_filter@1"
         },
         {
           "command": "layerLens.toggleOthers",
           "when": "view == layerLens.tree",
-          "group": "1_filter@2"
+          "group": "3_view@1"
         },
         {
           "command": "layerLens.toggleFlatten",
           "when": "view == layerLens.tree",
-          "group": "1_filter@3"
+          "group": "3_view@2"
         },
         {
           "command": "layerLens.newFile",
@@ -221,27 +221,27 @@
         {
           "command": "layerLens.editLayers",
           "when": "view == layerLens.tree",
-          "group": "2_layers@2"
+          "group": "4_layers@1"
         },
         {
           "command": "layerLens.rescan",
           "when": "view == layerLens.tree",
-          "group": "2_layers@4"
+          "group": "4_layers@3"
         },
         {
           "command": "layerLens.editColor",
           "when": "view == layerLens.tree",
-          "group": "2_layers@3"
+          "group": "4_layers@2"
         },
         {
           "command": "layerLens.hideAll",
           "when": "view == layerLens.tree",
-          "group": "1_filter@0"
+          "group": "1_filter@2"
         },
         {
           "command": "layerLens.invertLayers",
           "when": "view == layerLens.tree",
-          "group": "1_filter@0"
+          "group": "1_filter@3"
         },
         {
           "command": "layerLens.pickContexts",
@@ -288,7 +288,7 @@
         {
           "command": "layerLens.delete",
           "when": "webviewId == 'layerLens.tree' && webviewSection =~ /^(dir|file)$/ && !workspaceRoot",
-          "group": "4_modify@2"
+          "group": "6_delete@1"
         },
         {
           "command": "layerLens.copy",
